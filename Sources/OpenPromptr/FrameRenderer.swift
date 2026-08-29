@@ -5,7 +5,7 @@ import CoreMedia
 import CoreVideo
 import Metal
 import QuartzCore
-import TeleprompterCore
+import OpenPromptrCore
 
 enum RenderingPath: String, Sendable {
     case sampleBufferDisplayLayer = "AVSampleBufferDisplayLayer"

@@ -1,6 +1,6 @@
 # Contributing
 
-Thank you for your interest in Teleprompter Mirror. This project is
+Thank you for your interest in OpenPromptr. This project is
 intentionally kept small — please read the [Project scope](#project-scope)
 section before making larger changes.
 
@@ -33,7 +33,7 @@ swift Scripts/make-icon.swift
 There is a self-test for a smoke test without a real target display:
 
 ```bash
-open "dist/Teleprompter Mirror.app" --args --self-test
+open "dist/OpenPromptr.app" --args --self-test
 ```
 
 It reports `SELF_TEST_PASS` when capture setup and output work.
@@ -71,7 +71,7 @@ applications exist for such functions.
 
 ## Reporting bugs
 
-Please use the [issue templates](https://github.com/trsdn/teleprompter-mirror-macos/issues/new/choose).
+Please use the [issue templates](https://github.com/trsdn/OpenPromptr/issues/new/choose).
 Please do **not** create an issue for security-relevant findings; report them as
 described in [SECURITY.md](SECURITY.md).
 

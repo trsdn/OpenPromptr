@@ -2,7 +2,7 @@ import CoreMedia
 import CoreVideo
 import Foundation
 @preconcurrency import ScreenCaptureKit
-import TeleprompterCore
+import OpenPromptrCore
 
 enum CapturePipelineError: LocalizedError {
     case invalidSourceGeometry(width: Int, height: Int)
@@ -188,7 +188,7 @@ final class CaptureSession {
             onUnexpectedStop: onUnexpectedStop
         )
         let queue = DispatchQueue(
-            label: "com.github.trsdn.TeleprompterMirror.capture",
+            label: "com.github.trsdn.OpenPromptr.capture",
             qos: .userInteractive
         )
 

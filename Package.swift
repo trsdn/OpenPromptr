@@ -3,19 +3,19 @@
 import PackageDescription
 
 let package = Package(
-    name: "TeleprompterMirror",
+    name: "OpenPromptr",
     platforms: [
         .macOS(.v13)
     ],
     products: [
         .executable(
-            name: "TeleprompterMirror",
-            targets: ["TeleprompterMirror"]
+            name: "OpenPromptr",
+            targets: ["OpenPromptr"]
         )
     ],
     targets: [
         .target(
-            name: "TeleprompterCore"
+            name: "OpenPromptrCore"
         ),
         // Objective-C bridge to the private CGVirtualDisplay API. It lives in
         // its own target because a single SwiftPM target cannot mix Swift and
@@ -31,8 +31,8 @@ let package = Package(
             ]
         ),
         .executableTarget(
-            name: "TeleprompterMirror",
-            dependencies: ["TeleprompterCore", "VirtualDisplayBridge"],
+            name: "OpenPromptr",
+            dependencies: ["OpenPromptrCore", "VirtualDisplayBridge"],
             linkerSettings: [
                 .linkedFramework("AppKit"),
                 .linkedFramework("AVFoundation"),
@@ -48,8 +48,8 @@ let package = Package(
             ]
         ),
         .testTarget(
-            name: "TeleprompterCoreTests",
-            dependencies: ["TeleprompterCore"]
+            name: "OpenPromptrCoreTests",
+            dependencies: ["OpenPromptrCore"]
         )
     ],
     swiftLanguageModes: [.v6]

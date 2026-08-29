@@ -4,8 +4,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 CONFIGURATION="${CONFIGURATION:-release}"
-PRODUCT_NAME="TeleprompterMirror"
-APP_NAME="Teleprompter Mirror.app"
+PRODUCT_NAME="OpenPromptr"
+APP_NAME="OpenPromptr.app"
 DIST_DIR="${SCRIPT_DIR}/dist"
 APP_DIR="${DIST_DIR}/${APP_NAME}"
 

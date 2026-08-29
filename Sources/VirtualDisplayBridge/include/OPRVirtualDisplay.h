@@ -20,7 +20,7 @@ NS_ASSUME_NONNULL_BEGIN
 /// lifetime; the synthetic display disappears as soon as this object is
 /// deallocated, so it must be held for the lifetime of the app.
 NS_SWIFT_NAME(VirtualDisplay)
-@interface TPMVirtualDisplay : NSObject
+@interface OPRVirtualDisplay : NSObject
 
 /// The `CGDirectDisplayID` of the live virtual display.
 @property (nonatomic, readonly) uint32_t displayID;

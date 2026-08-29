@@ -27,9 +27,9 @@ final class AppStatusItemController: NSObject, NSMenuDelegate {
 
         statusItem.button?.image = NSImage(
             systemSymbolName: "rectangle.on.rectangle.angled",
-            accessibilityDescription: "Teleprompter Mirror"
+            accessibilityDescription: "OpenPromptr"
         )
-        statusItem.button?.toolTip = "Teleprompter Mirror"
+        statusItem.button?.toolTip = "OpenPromptr"
 
         startItem.target = self
         stopItem.target = self
@@ -51,7 +51,7 @@ final class AppStatusItemController: NSObject, NSMenuDelegate {
         menu.addItem(.separator())
 
         let quitItem = NSMenuItem(
-            title: "Quit Teleprompter Mirror",
+            title: "Quit OpenPromptr",
             action: #selector(quit),
             keyEquivalent: "q"
         )
@@ -164,7 +164,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 }
 
 @MainActor
-struct TeleprompterMirrorApp: App {
+struct OpenPromptrApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self)
     private var appDelegate
 
@@ -172,7 +172,7 @@ struct TeleprompterMirrorApp: App {
     private var model = AppModel()
 
     var body: some Scene {
-        Window("Teleprompter Mirror", id: "controls") {
+        Window("OpenPromptr", id: "controls") {
             ControlRootView(
                 model: model,
                 configure: { showControls in

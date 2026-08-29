@@ -35,5 +35,5 @@ jobs:
         run: ./build-app.sh
       - name: Check bundle
         run: |
-          test -x "dist/Teleprompter Mirror.app/Contents/MacOS/TeleprompterMirror"
-          test -f "dist/Teleprompter Mirror.app/Contents/Resources/AppIcon.icns"
+          test -x "dist/OpenPromptr.app/Contents/MacOS/OpenPromptr"
+          test -f "dist/OpenPromptr.app/Contents/Resources/AppIcon.icns"

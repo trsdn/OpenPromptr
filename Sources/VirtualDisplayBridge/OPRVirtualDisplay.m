@@ -1,4 +1,4 @@
-#import "TPMVirtualDisplay.h"
+#import "OPRVirtualDisplay.h"
 
 // ---------------------------------------------------------------------------
 // Private CoreGraphics virtual-display API — declarations for typing only.
@@ -42,15 +42,15 @@
 
 // Stable synthetic EDID-style identity. Keeping these constant lets the same
 // persisted preset resolve the source across launches without ever colliding
-// with real hardware. ("TM"/"VD" spell out Teleprompter Mirror / Virtual
+// with real hardware. ("OP"/"VD" spell out OpenPromptr / Virtual
 // Display.)
-static const unsigned int kTPMVendorID  = 0x544D; // "TM"
-static const unsigned int kTPMProductID = 0x0001;
-static const unsigned int kTPMSerialNum = 0x0001;
-static const unsigned int kTPMMaxPixelsWide = 4096;
-static const unsigned int kTPMMaxPixelsHigh = 2304;
+static const unsigned int kOPRVendorID  = 0x4F50; // "OP"
+static const unsigned int kOPRProductID = 0x0001;
+static const unsigned int kOPRSerialNum = 0x0001;
+static const unsigned int kOPRMaxPixelsWide = 4096;
+static const unsigned int kOPRMaxPixelsHigh = 2304;
 
-@implementation TPMVirtualDisplay {
+@implementation OPRVirtualDisplay {
     // Held for the object's lifetime so the synthetic display stays online.
     id _virtualDisplay;
     id _descriptor;
@@ -74,19 +74,19 @@ static const unsigned int kTPMMaxPixelsHigh = 2304;
     Class modeClass = NSClassFromString(@"CGVirtualDisplayMode");
     Class displayClass = NSClassFromString(@"CGVirtualDisplay");
     if (!descriptorClass || !settingsClass || !modeClass || !displayClass) {
-        NSLog(@"[TPMVirtualDisplay] Private CGVirtualDisplay API unavailable.");
+        NSLog(@"[OPRVirtualDisplay] Private CGVirtualDisplay API unavailable.");
         return nil;
     }
 
     CGVirtualDisplayDescriptor *descriptor = [[descriptorClass alloc] init];
     if (!descriptor) {
-        NSLog(@"[TPMVirtualDisplay] Could not allocate display descriptor.");
+        NSLog(@"[OPRVirtualDisplay] Could not allocate display descriptor.");
         return nil;
     }
 
     descriptor.name = [name copy];
     descriptor.queue = dispatch_queue_create(
-        "com.github.trsdn.TeleprompterMirror.virtualdisplay",
+        "com.github.trsdn.OpenPromptr.virtualdisplay",
         dispatch_queue_attr_make_with_qos_class(
             DISPATCH_QUEUE_SERIAL,
             QOS_CLASS_USER_INTERACTIVE,
@@ -95,26 +95,26 @@ static const unsigned int kTPMMaxPixelsHigh = 2304;
     );
     // A plausible 16:9 panel; only affects reported DPI, not capture.
     descriptor.sizeInMillimeters = CGSizeMake(476.0, 268.0);
-    descriptor.maxPixelsWide = MAX(width, kTPMMaxPixelsWide);
-    descriptor.maxPixelsHigh = MAX(height, kTPMMaxPixelsHigh);
+    descriptor.maxPixelsWide = MAX(width, kOPRMaxPixelsWide);
+    descriptor.maxPixelsHigh = MAX(height, kOPRMaxPixelsHigh);
     // sRGB primaries and a D65 white point.
     descriptor.redPrimary = CGPointMake(0.640, 0.330);
     descriptor.greenPrimary = CGPointMake(0.300, 0.600);
     descriptor.bluePrimary = CGPointMake(0.150, 0.060);
     descriptor.whitePoint = CGPointMake(0.3127, 0.3290);
-    descriptor.vendorID = kTPMVendorID;
-    descriptor.productID = kTPMProductID;
-    descriptor.serialNum = kTPMSerialNum;
+    descriptor.vendorID = kOPRVendorID;
+    descriptor.productID = kOPRProductID;
+    descriptor.serialNum = kOPRSerialNum;
     descriptor.terminationHandler = ^(id sender, id info) {
         // The window server tore the display down (rare). Log only; the app's
         // run loop and reconnect logic decide what to do next. Never exit.
-        NSLog(@"[TPMVirtualDisplay] Virtual display terminated by the system.");
+        NSLog(@"[OPRVirtualDisplay] Virtual display terminated by the system.");
     };
 
     CGVirtualDisplay *display =
         [[displayClass alloc] initWithDescriptor:descriptor];
     if (!display) {
-        NSLog(@"[TPMVirtualDisplay] Could not create the virtual display.");
+        NSLog(@"[OPRVirtualDisplay] Could not create the virtual display.");
         return nil;
     }
 
@@ -125,13 +125,13 @@ static const unsigned int kTPMMaxPixelsHigh = 2304;
                height:MAX(height / 2, 1)
                                                       refreshRate:refreshRate];
     if (!mode) {
-        NSLog(@"[TPMVirtualDisplay] Could not create the display mode.");
+        NSLog(@"[OPRVirtualDisplay] Could not create the display mode.");
         return nil;
     }
     settings.modes = @[mode];
 
     if (![display applySettings:settings]) {
-        NSLog(@"[TPMVirtualDisplay] applySettings: failed.");
+        NSLog(@"[OPRVirtualDisplay] applySettings: failed.");
         return nil;
     }
 
@@ -142,11 +142,11 @@ static const unsigned int kTPMMaxPixelsHigh = 2304;
     _pixelsHigh = height;
 
     if (_displayID == 0) {
-        NSLog(@"[TPMVirtualDisplay] Virtual display reported an invalid ID.");
+        NSLog(@"[OPRVirtualDisplay] Virtual display reported an invalid ID.");
         return nil;
     }
 
-    NSLog(@"[TPMVirtualDisplay] Virtual display '%@' online: id=%u %ux%u@%.0f",
+    NSLog(@"[OPRVirtualDisplay] Virtual display '%@' online: id=%u %ux%u@%.0f",
           name, _displayID, width, height, refreshRate);
     return self;
 }

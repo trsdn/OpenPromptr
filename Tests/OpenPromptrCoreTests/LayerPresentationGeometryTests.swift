@@ -1,6 +1,6 @@
 import CoreGraphics
 import Testing
-@testable import TeleprompterCore
+@testable import OpenPromptrCore
 
 @Test("Layer geometry preserves transform order for every transform")
 func layerGeometryPreservesTransformOrder() throws {
