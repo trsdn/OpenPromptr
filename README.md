@@ -222,6 +222,22 @@ A display identity combines, as far as available:
 A transient `CGDirectDisplayID` is never stored alone or permanently. Ambiguous
 matches are not used automatically.
 
+## Upgrading from Teleprompter Mirror
+
+The app was called *Teleprompter Mirror* before and is now called
+**OpenPromptr**. Because `UserDefaults` is keyed by the bundle ID, the renamed
+app starts with an empty preferences domain. On first launch it therefore reads
+the old domain `com.github.trsdn.TeleprompterMirror` once and adopts the stored
+configuration, so source, target display, and transformation carry over. From
+then on only the new domain is used; the old one is left untouched.
+
+Two things do not carry over, because macOS ties them to the bundle ID:
+
+- **Screen Recording** must be granted again for the new app bundle.
+- A **Start at Login** entry registered by the old app remains registered for the
+  old bundle ID. Remove it under **System Settings → General → Login Items** and
+  enable the option again in OpenPromptr.
+
 ## Permission, login start, and reconnection
 
 Under **System Settings → Privacy & Security → Screen Recording**, the specific

@@ -30,19 +30,24 @@ private enum AppModelError: LocalizedError {
 private enum SettingsStore {
     static let key = "app-settings-v1"
 
+    /// Preferences live in the domain of the bundle identifier. The rename from
+    /// *Teleprompter Mirror* therefore points at an empty domain, which would
+    /// look to the user like every stored setup was thrown away. Read the old
+    /// domain once and adopt what it holds.
+    static let legacyDomain = "com.github.trsdn.TeleprompterMirror"
+
     static func load(from defaults: UserDefaults) -> AppSettings {
-        guard let data = defaults.data(forKey: key) else {
+        if let data = defaults.data(forKey: key) {
+            return decode(data)
+        }
+        guard let data = legacyData() else {
             return .defaults
         }
-        do {
-            return try AppSettingsCodec.decode(data)
-        } catch {
-            NSLog(
-                "Stored settings are invalid; falling back to defaults: %@",
-                error.localizedDescription
-            )
-            return .defaults
-        }
+        // Write it through so the next launch reads the current domain and the
+        // old one is never consulted again.
+        defaults.set(data, forKey: key)
+        NSLog("Adopted the settings of the previous Teleprompter Mirror install.")
+        return decode(data)
     }
 
     static func save(_ settings: AppSettings, to defaults: UserDefaults) {
@@ -53,6 +58,22 @@ private enum SettingsStore {
                 "Could not save settings: %@",
                 error.localizedDescription
             )
+        }
+    }
+
+    private static func legacyData() -> Data? {
+        UserDefaults(suiteName: legacyDomain)?.data(forKey: key)
+    }
+
+    private static func decode(_ data: Data) -> AppSettings {
+        do {
+            return try AppSettingsCodec.decode(data)
+        } catch {
+            NSLog(
+                "Stored settings are invalid; falling back to defaults: %@",
+                error.localizedDescription
+            )
+            return .defaults
         }
     }
 }
