@@ -10,7 +10,7 @@ Older versions are not maintained.
 Please do **not** report vulnerabilities through a public issue.
 
 Instead, use GitHub's private reporting feature:
-[Report Security Advisory](https://github.com/trsdn/teleprompter-mirror-macos/security/advisories/new).
+[Report Security Advisory](https://github.com/trsdn/OpenPromptr/security/advisories/new).
 
 Helpful information for the analysis includes:
 

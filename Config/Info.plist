@@ -6,17 +6,17 @@
     <key>CFBundleDevelopmentRegion</key>
     <string>en</string>
     <key>CFBundleDisplayName</key>
-    <string>Teleprompter Mirror</string>
+    <string>OpenPromptr</string>
     <key>CFBundleExecutable</key>
-    <string>TeleprompterMirror</string>
+    <string>OpenPromptr</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>CFBundleIdentifier</key>
-    <string>com.github.trsdn.TeleprompterMirror</string>
+    <string>com.github.trsdn.OpenPromptr</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>Teleprompter Mirror</string>
+    <string>OpenPromptr</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
@@ -36,6 +36,6 @@
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
     <key>NSScreenCaptureUsageDescription</key>
-    <string>Teleprompter Mirror needs screen recording access to capture the selected source - a private virtual display, a connected display or a single window - and to show its content mirrored or rotated on the selected target display.</string>
+    <string>OpenPromptr needs screen recording access to capture the selected source - a private virtual display, a connected display or a single window - and to show its content mirrored or rotated on the selected target display.</string>
 </dict>
 </plist>

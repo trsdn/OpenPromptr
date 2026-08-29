@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import TeleprompterCore
+@testable import OpenPromptrCore
 
 @Test("Teleprompter default mirrors horizontally at zero degrees")
 func teleprompterDefaultTransform() {

@@ -11,7 +11,7 @@ enum VirtualSource {
 
 enum VirtualDisplayHostProtocol {
     static let argument = "--virtual-display-host"
-    static let readyPrefix = "TPM_DISPLAY_READY "
+    static let readyPrefix = "OPR_DISPLAY_READY "
 }
 
 enum VirtualDisplayHostError: LocalizedError {
@@ -45,7 +45,7 @@ enum VirtualDisplayHostMain {
             height: UInt32(VirtualSource.height),
             refreshRate: VirtualSource.refreshRate
         ) else {
-            fputs("TPM_DISPLAY_ERROR creation_failed\n", stderr)
+            fputs("OPR_DISPLAY_ERROR creation_failed\n", stderr)
             fflush(stderr)
             exit(EXIT_FAILURE)
         }

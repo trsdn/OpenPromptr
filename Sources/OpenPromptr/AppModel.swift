@@ -3,10 +3,10 @@ import CoreGraphics
 import Foundation
 import OSLog
 import ServiceManagement
-import TeleprompterCore
+import OpenPromptrCore
 
 private let lifecycleLogger = Logger(
-    subsystem: "com.github.trsdn.TeleprompterMirror",
+    subsystem: "com.github.trsdn.OpenPromptr",
     category: "lifecycle"
 )
 
@@ -671,7 +671,7 @@ final class AppModel: ObservableObject {
         updatePermissionStatus()
         guard permissionGranted else {
             finishSelfTest(
-                "SELF_TEST_SKIP: com.github.trsdn.TeleprompterMirror has no screen recording permission.",
+                "SELF_TEST_SKIP: com.github.trsdn.OpenPromptr has no screen recording permission.",
                 isError: false
             )
             return

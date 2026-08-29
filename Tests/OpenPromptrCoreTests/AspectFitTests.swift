@@ -1,5 +1,5 @@
 import Testing
-@testable import TeleprompterCore
+@testable import OpenPromptrCore
 
 @Test("A wide source is letterboxed above and below")
 func wideSourceIsLetterboxed() {

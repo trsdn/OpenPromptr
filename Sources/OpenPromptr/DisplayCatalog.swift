@@ -1,7 +1,7 @@
 import AppKit
 import CoreGraphics
 @preconcurrency import ScreenCaptureKit
-import TeleprompterCore
+import OpenPromptrCore
 
 struct DisplayDescriptor: Identifiable, Hashable, Sendable {
     let id: CGDirectDisplayID

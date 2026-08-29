@@ -1,5 +1,5 @@
 import AppKit
-import TeleprompterCore
+import OpenPromptrCore
 
 @MainActor
 final class PassiveOutputWindow: NSWindow {

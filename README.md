@@ -2,16 +2,16 @@
 
 <img src="docs/icon.png" alt="App icon" width="128">
 
-# Teleprompter Mirror
+# OpenPromptr
 
-[![CI](https://github.com/trsdn/teleprompter-mirror-macos/actions/workflows/ci.yml/badge.svg)](https://github.com/trsdn/teleprompter-mirror-macos/actions/workflows/ci.yml)
+[![CI](https://github.com/trsdn/OpenPromptr/actions/workflows/ci.yml/badge.svg)](https://github.com/trsdn/OpenPromptr/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform: macOS 13+](https://img.shields.io/badge/Platform-macOS%2013%2B-lightgrey.svg)](#requirements)
 [![Swift 6.1](https://img.shields.io/badge/Swift-6.1-orange.svg)](Package.swift)
 
 </div>
 
-Teleprompter Mirror is a standalone native macOS app for a teleprompter or
+OpenPromptr is a standalone native macOS app for a teleprompter or
 mirror-glass setup. It captures a selectable source with ScreenCaptureKit,
 mirrors or rotates the image, and shows the result full-screen on a **physical
 target display**. The aspect ratio is preserved; unused areas are black.
@@ -29,7 +29,7 @@ shows the mirrored/rotated stream. Because source and target are separate, the
 full-screen output does not cover the source and no optical feedback loop is
 created.
 
-This app combines the earlier *Display Transformer* (display source) and
+OpenPromptr combines the earlier *Display Transformer* (display source) and
 *Teleprompter Mirror* (virtual source) in one program and adds Window mode.
 
 There are no third-party packages or permanently installed daemons. Only in
@@ -93,13 +93,13 @@ the invisible virtual display.
 ## Building and testing
 
 ```bash
-git clone https://github.com/trsdn/teleprompter-mirror-macos.git
-cd teleprompter-mirror-macos
+git clone https://github.com/trsdn/OpenPromptr.git
+cd OpenPromptr
 swift test
 ./build-app.sh
 ```
 
-The script creates `dist/Teleprompter Mirror.app`. It automatically prefers an
+The script creates `dist/OpenPromptr.app`. It automatically prefers an
 available identity of type **Developer ID Application**, falls back to **Apple
 Development**, and only falls back to an ad-hoc signature with a warning if no
 stable identity is available. There is no hard-coded team or certificate
@@ -124,11 +124,11 @@ swift Scripts/make-icon.swift
 
 ### Optional runtime self-test
 
-Only if **Teleprompter Mirror itself** already has Screen Recording access can
+Only if **OpenPromptr itself** already has Screen Recording access can
 the signed build be tested without a new permission dialog:
 
 ```bash
-open "dist/Teleprompter Mirror.app" --args --self-test
+open "dist/OpenPromptr.app" --args --self-test
 ```
 
 The test forces the virtual source, selects the default target display, starts
@@ -167,7 +167,7 @@ running.
 - **Stop** in the control window
 - `⌘.` while the app menu or control window is active
 - **Stop Output** in the status menu in the macOS menu bar
-- **Quit Teleprompter Mirror** in the status menu or app menu
+- **Quit OpenPromptr** in the status menu or app menu
 
 `Escape` can trigger cancellation in the active control/menu context. The
 passive output window is intentionally never the keyboard window and therefore

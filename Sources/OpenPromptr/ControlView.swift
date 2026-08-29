@@ -1,6 +1,6 @@
 import CoreGraphics
 import SwiftUI
-import TeleprompterCore
+import OpenPromptrCore
 
 /// A titled block of related controls. Keeps the window scannable without
 /// relying on the heavier platform `GroupBox` chrome.
@@ -139,7 +139,7 @@ struct ControlView: View {
                 .foregroundStyle(.blue)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
-                Text("Teleprompter Mirror")
+                Text("OpenPromptr")
                     .font(.headline)
                 Text("Mirror and rotate a display, a window or a virtual display")
                     .font(.caption)

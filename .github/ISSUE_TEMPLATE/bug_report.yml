@@ -69,5 +69,5 @@ body:
       label: Log output
       description: |
         Optional, but very helpful:
-        `log show --last 5m --predicate 'subsystem == "com.github.trsdn.TeleprompterMirror"' --style compact`
+        `log show --last 5m --predicate 'subsystem == "com.github.trsdn.OpenPromptr"' --style compact`
       render: text
