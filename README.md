@@ -254,8 +254,25 @@ If the saved target display is missing at startup or disconnected, the app waits
 without polling for `didChangeScreenParametersNotification`. When it returns
 unambiguously, a desired automatic output starts again. A manual stop suppresses
 any automatic restart for the current app session; only an explicit **Start
-Output** lifts the suppression. Capture or rendering errors are blocked instead
-of creating restart loops.
+Output** lifts the suppression.
+
+**Automatically resume output after an interruption**, under **Startup and
+recovery**, is a separate, persistent option and defaults to off, including
+after an upgrade. When enabled, capture or rendering failures are retried after
+2, 5, and 15 seconds. After three unsuccessful attempts the output stays stopped
+and shows the error; **Start output** starts a fresh retry budget. The budget
+also resets once an output has run without another failure for at least 30
+seconds after its first rendered frame. A blank or unchanged source is not an
+error and does not trigger a restart.
+
+Missing source/target displays wait for reconnection without consuming retries.
+For a missing source window, use **Refresh** once it is available again.
+Missing Screen Recording permission blocks recovery without requesting access
+automatically. **Stop**, quitting the app, stopping capture from the macOS
+sharing controls, or disabling recovery while a retry is pending cancels it.
+Disabling recovery during healthy output leaves that output running.
+Lifecycle logs record stop causes, error domains/codes, retry scheduling,
+cancellation, and results; potentially sensitive error text is private.
 
 ## Limitations
 

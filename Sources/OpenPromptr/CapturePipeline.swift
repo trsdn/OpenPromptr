@@ -1,7 +1,18 @@
 import CoreMedia
 import CoreVideo
 import Foundation
+import OSLog
 @preconcurrency import ScreenCaptureKit
+
+private let captureLogger = Logger(
+    subsystem: "com.github.trsdn.OpenPromptr",
+    category: "capture"
+)
+
+struct CaptureStop: Sendable {
+    let message: String
+    let userInitiated: Bool
+}
 import OpenPromptrCore
 
 enum CapturePipelineError: LocalizedError {
@@ -23,14 +34,14 @@ private final class CaptureStreamBridge: NSObject, @unchecked Sendable,
 {
     private let lock = NSLock()
     private let frameReceiver: FrameReceiver
-    private let onUnexpectedStop: @Sendable (String) -> Void
+    private let onUnexpectedStop: @Sendable (CaptureStop) -> Void
     private var stoppingIntentionally = false
     private var loggedFirstCallback = false
     private var loggedFirstCompleteFrame = false
 
     init(
         frameReceiver: FrameReceiver,
-        onUnexpectedStop: @escaping @Sendable (String) -> Void
+        onUnexpectedStop: @escaping @Sendable (CaptureStop) -> Void
     ) {
         self.frameReceiver = frameReceiver
         self.onUnexpectedStop = onUnexpectedStop
@@ -91,13 +102,16 @@ private final class CaptureStreamBridge: NSObject, @unchecked Sendable,
         let expected = stoppingIntentionally
         lock.unlock()
 
-        NSLog(
-            "ScreenCaptureKit stream stopped%@ : %@",
-            expected ? " (requested)" : "",
-            error.localizedDescription
+        let diagnostic = error as NSError
+        captureLogger.notice(
+            "Stream stopped (requested: \(expected, privacy: .public)): \(diagnostic.domain, privacy: .public) code \(diagnostic.code, privacy: .public), \(diagnostic.localizedDescription, privacy: .private)"
         )
         if !expected {
-            onUnexpectedStop(error.localizedDescription)
+            onUnexpectedStop(CaptureStop(
+                message: error.localizedDescription,
+                userInitiated: diagnostic.domain == SCStreamErrorDomain
+                    && diagnostic.code == SCStreamError.Code.userStopped.rawValue
+            ))
         }
     }
 
@@ -154,7 +168,7 @@ final class CaptureSession {
     init(
         snapshot: ResolvedCaptureSnapshot,
         frameReceiver: FrameReceiver,
-        onUnexpectedStop: @escaping @Sendable (String) -> Void
+        onUnexpectedStop: @escaping @Sendable (CaptureStop) -> Void
     ) throws {
         guard snapshot.sourceWidth > 0, snapshot.sourceHeight > 0 else {
             throw CapturePipelineError.invalidSourceGeometry(

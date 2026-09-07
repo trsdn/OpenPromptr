@@ -309,7 +309,7 @@ struct ControlView: View {
     }
 
     private var startupSection: some View {
-        ControlSection(title: "Startup", systemImage: "power") {
+        ControlSection(title: "Startup and recovery", systemImage: "power") {
             VStack(alignment: .leading, spacing: 6) {
                 Toggle(
                     "Start output automatically when the app launches",
@@ -318,6 +318,17 @@ struct ControlView: View {
                         set: { model.setAutoStartOutput($0) }
                     )
                 )
+
+                Toggle(
+                    "Automatically resume output after an interruption",
+                    isOn: Binding(
+                        get: { model.autoResumeOutput },
+                        set: { model.setAutoResumeOutput($0) }
+                    )
+                )
+                Text("Retries after 2, 5 and 15 seconds. Stop always cancels automatic recovery.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
 
                 HStack {
                     Toggle(
@@ -410,12 +421,13 @@ struct ControlView: View {
                     .controlSize(.small)
             }
 
-            if model.isRunning || model.isBusy {
+            if model.canStop {
                 Button("Stop", role: .destructive) {
                     model.requestStop()
                 }
                 .keyboardShortcut(.cancelAction)
-            } else {
+            }
+            if !model.isRunning && !model.isBusy {
                 Button("Start output") {
                     Task { @MainActor in
                         await model.start()

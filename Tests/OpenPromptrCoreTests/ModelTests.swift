@@ -264,7 +264,8 @@ func settingsNormalizeSource() {
             ),
             target: identity(serial: 4, uuid: "TARGET", name: "Prompter")
         ),
-        autoStartOutput: true
+        autoStartOutput: true,
+        autoResumeOutput: true
     )
     let normalized = malformed.normalized()
 
@@ -272,6 +273,7 @@ func settingsNormalizeSource() {
     #expect(normalized.configuration.source.window != nil)
     #expect(normalized.schemaVersion == AppSettings.currentSchemaVersion)
     #expect(normalized.autoStartOutput)
+    #expect(normalized.autoResumeOutput)
 }
 
 @Test("Complete settings survive persistence codec")
@@ -293,7 +295,8 @@ func settingsCodecRoundTrip() throws {
                 mirrorVertically: true
             )
         ),
-        autoStartOutput: true
+        autoStartOutput: true,
+        autoResumeOutput: true
     )
 
     let decoded = try AppSettingsCodec.decode(
@@ -341,7 +344,47 @@ func legacyPresetsMigrateToSingleConfiguration() throws {
     #expect(decoded.configuration == wanted)
     #expect(decoded.configuration.source.kind == .virtualDisplay)
     #expect(decoded.autoStartOutput)
+    #expect(!decoded.autoResumeOutput)
     #expect(decoded.schemaVersion == AppSettings.currentSchemaVersion)
+}
+
+@Test("Existing single-configuration settings default recovery to off")
+func settingsWithoutRecoveryKeepTheirConfiguration() throws {
+    let data = Data("""
+        {
+            "schemaVersion": 2,
+            "autoStartOutput": true,
+            "configuration": {
+                "source": { "kind": "virtualDisplay" },
+                "transform": {
+                    "rotation": 90,
+                    "mirrorHorizontally": false,
+                    "mirrorVertically": true
+                }
+            }
+        }
+        """.utf8)
+    let decoded = try AppSettingsCodec.decode(data)
+    #expect(!decoded.autoResumeOutput)
+    #expect(decoded.autoStartOutput)
+    #expect(decoded.configuration.transform.rotation == .degrees90)
+    #expect(decoded.configuration.transform.mirrorVertically)
+}
+
+@Test("Recovery is off by default and independent of launch startup")
+func settingsRecoveryIsIndependent() throws {
+    #expect(!AppSettings.defaults.autoResumeOutput)
+    for autoStart in [false, true] {
+        for autoResume in [false, true] {
+            let settings = AppSettings(
+                autoStartOutput: autoStart,
+                autoResumeOutput: autoResume
+            )
+            #expect(try AppSettingsCodec.decode(
+                AppSettingsCodec.encode(settings)
+            ) == settings)
+        }
+    }
 }
 
 @Test("Window identity resolves only when it is unambiguous")

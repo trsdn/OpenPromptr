@@ -565,15 +565,18 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var schemaVersion: Int
     public var configuration: TeleprompterConfiguration
     public var autoStartOutput: Bool
+    public var autoResumeOutput: Bool
 
     public init(
         schemaVersion: Int = currentSchemaVersion,
         configuration: TeleprompterConfiguration = .init(),
-        autoStartOutput: Bool = false
+        autoStartOutput: Bool = false,
+        autoResumeOutput: Bool = false
     ) {
         self.schemaVersion = schemaVersion
         self.configuration = configuration
         self.autoStartOutput = autoStartOutput
+        self.autoResumeOutput = autoResumeOutput
     }
 
     public static var defaults: AppSettings {
@@ -586,6 +589,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         case activePresetIndex
         case presets
         case autoStartOutput
+        case autoResumeOutput
     }
 
     public init(from decoder: Decoder) throws {
@@ -597,6 +601,10 @@ public struct AppSettings: Codable, Equatable, Sendable {
         autoStartOutput = try container.decodeIfPresent(
             Bool.self,
             forKey: .autoStartOutput
+        ) ?? false
+        autoResumeOutput = try container.decodeIfPresent(
+            Bool.self,
+            forKey: .autoResumeOutput
         ) ?? false
 
         if let configuration = try container.decodeIfPresent(
@@ -628,6 +636,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         try container.encode(Self.currentSchemaVersion, forKey: .schemaVersion)
         try container.encode(configuration, forKey: .configuration)
         try container.encode(autoStartOutput, forKey: .autoStartOutput)
+        try container.encode(autoResumeOutput, forKey: .autoResumeOutput)
     }
 
     public func normalized() -> AppSettings {

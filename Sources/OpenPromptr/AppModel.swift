@@ -88,6 +88,7 @@ final class AppModel: ObservableObject {
     @Published private(set) var selectedDisplayID: CGDirectDisplayID?
     @Published private(set) var transform: DisplayTransform
     @Published private(set) var autoStartOutput: Bool
+    @Published private(set) var autoResumeOutput: Bool
     @Published private(set) var isRunning = false
     @Published private(set) var isBusy = false
     @Published private(set) var isRefreshingWindows = false
@@ -104,6 +105,7 @@ final class AppModel: ObservableObject {
     private enum Lifecycle: Equatable {
         case idle
         case waiting
+        case recovering
         case starting(UInt64)
         case running
         case stopping
@@ -134,6 +136,7 @@ final class AppModel: ObservableObject {
     private var operationEpoch: UInt64 = 0
     private var pendingCaptureStop: (epoch: UInt64, message: String)?
     private var pendingRenderingFailure: (epoch: UInt64, message: String)?
+    private var pendingFirstFrame: (epoch: UInt64, path: RenderingPath)?
     private var captureSession: CaptureSession?
     private var outputController: OutputWindowController?
     private var startingCaptureSession: CaptureSession?
@@ -142,6 +145,10 @@ final class AppModel: ObservableObject {
     private var displayChangeTask: Task<Void, Never>?
     private var windowRefreshTask: Task<Void, Never>?
     private var selfTestTimeoutTask: Task<Void, Never>?
+    private var recoveryTask: Task<Void, Never>?
+    private var recoveryGeneration: UInt64 = 0
+    private var recoveryPolicy = OutputRecoveryPolicy()
+    private var recoveryFailure: String?
     private var stopWaiters: [CheckedContinuation<Void, Never>] = []
     private var didLaunch = false
     private var selfTestRenderedFrame = false
@@ -151,6 +158,7 @@ final class AppModel: ObservableObject {
         self.defaults = defaults
         settings = loaded
         autoStartOutput = loaded.autoStartOutput
+        autoResumeOutput = loaded.autoResumeOutput
 
         let configuration = loaded.configuration
         workingSource = configuration.source
@@ -180,6 +188,7 @@ final class AppModel: ObservableObject {
         displayChangeTask?.cancel()
         windowRefreshTask?.cancel()
         selfTestTimeoutTask?.cancel()
+        recoveryTask?.cancel()
         NotificationCenter.default.removeObserver(self)
     }
 
@@ -324,6 +333,7 @@ final class AppModel: ObservableObject {
         }
         let shouldContinueOutput =
             !manualStopSuppressed && (desiredOutput || isRunning)
+        cancelRecovery(resetBudget: true)
         invalidateStartIfNeeded()
 
         sourceKind = kind
@@ -361,6 +371,7 @@ final class AppModel: ObservableObject {
         guard !isRunning, !isBusy else {
             return
         }
+        cancelRecovery(resetBudget: true)
         selectedSourceDisplayID = displayID
         workingSource.display = displayID.flatMap { id in
             displays.first(where: { $0.id == id })?.identity
@@ -373,6 +384,7 @@ final class AppModel: ObservableObject {
         guard !isRunning, !isBusy else {
             return
         }
+        cancelRecovery(resetBudget: true)
         selectedSourceWindowID = windowID
         workingSource.window = windowID.flatMap { id in
             windows.first(where: { $0.id == id })?.identity
@@ -385,6 +397,7 @@ final class AppModel: ObservableObject {
         guard !isRunning, !isBusy else {
             return
         }
+        cancelRecovery(resetBudget: true)
         selectedDisplayID = displayID
         workingTargetIdentity = displayID.flatMap { id in
             displays.first(where: { $0.id == id })?.identity
@@ -426,6 +439,24 @@ final class AppModel: ObservableObject {
             )?.id
             isRefreshingWindows = false
             updateIdleStatus()
+            if lifecycle == .waiting {
+                await reconcileOutput()
+            }
+        }
+    }
+
+    func setAutoResumeOutput(_ enabled: Bool) {
+        autoResumeOutput = enabled
+        settings.autoResumeOutput = enabled
+        persistSettings()
+        lifecycleLogger.notice("Automatic recovery enabled: \(enabled, privacy: .public)")
+
+        if !enabled {
+            let wasRecovering = recoveryFailure != nil
+            cancelRecovery(resetBudget: false)
+            if wasRecovering {
+                requestStop(message: "Automatic recovery disabled. Use \"Start output\" to resume.")
+            }
         }
     }
 
@@ -436,10 +467,12 @@ final class AppModel: ObservableObject {
 
         if enabled {
             if !manualStopSuppressed {
+                cancelRecovery(resetBudget: true)
                 blockReason = nil
                 desiredOutput = true
             }
         } else {
+            cancelRecovery(resetBudget: true)
             desiredOutput = false
             invalidateStartIfNeeded()
         }
@@ -610,6 +643,7 @@ final class AppModel: ObservableObject {
     }
 
     func start() async {
+        cancelRecovery(resetBudget: true)
         manualStopSuppressed = false
         blockReason = nil
         desiredOutput = true
@@ -617,6 +651,8 @@ final class AppModel: ObservableObject {
     }
 
     func requestStop(message: String = "Output stopped.") {
+        cancelRecovery(resetBudget: true)
+        lifecycleLogger.notice("Stop requested: \(message, privacy: .private)")
         manualStopSuppressed = true
         desiredOutput = false
         blockReason = nil
@@ -649,6 +685,7 @@ final class AppModel: ObservableObject {
     }
 
     func shutdown() async {
+        cancelRecovery(resetBudget: true)
         displayChangeTask?.cancel()
         windowRefreshTask?.cancel()
         selfTestTimeoutTask?.cancel()
@@ -742,6 +779,7 @@ final class AppModel: ObservableObject {
     }
 
     func prepareForTermination() {
+        cancelRecovery(resetBudget: true)
         outputController?.close()
         startingOutputController?.close()
         outputController = nil
@@ -825,6 +863,7 @@ final class AppModel: ObservableObject {
         }
 
         guard desiredOutput, !manualStopSuppressed else {
+            cancelRecovery(resetBudget: false)
             if lifecycle == .running || captureSession != nil {
                 await stopCommittedOutput(
                     message: stopMessage,
@@ -844,6 +883,7 @@ final class AppModel: ObservableObject {
 
         permissionGranted = CGPreflightScreenCaptureAccess()
         guard permissionGranted else {
+            cancelRecovery(resetBudget: false)
             blockReason = .permission
             let message =
                 "Automatic start is waiting for screen recording permission. Please grant access."
@@ -872,6 +912,10 @@ final class AppModel: ObservableObject {
         }
 
         guard let target = resolvedTarget, resolvedSourceIsAvailable else {
+            if lifecycle == .recovering {
+                cancelRecovery(resetBudget: false)
+                blockReason = nil
+            }
             if case .starting = lifecycle {
                 operationEpoch &+= 1
                 setStatus(waitingStatusText, isError: false)
@@ -911,10 +955,14 @@ final class AppModel: ObservableObject {
         }
 
         switch lifecycle {
-        case .starting, .stopping:
+        case .starting, .stopping, .recovering:
             return
         case .idle, .waiting, .blocked:
-            await startResolvedOutput(target: target)
+            if let recoveryFailure {
+                scheduleRecovery(after: recoveryFailure)
+            } else {
+                await startResolvedOutput(target: target)
+            }
         case .running:
             break
         }
@@ -972,6 +1020,7 @@ final class AppModel: ObservableObject {
         let epoch = operationEpoch
         pendingCaptureStop = nil
         pendingRenderingFailure = nil
+        pendingFirstFrame = nil
         setLifecycle(.starting(epoch))
         setStatus("Preparing the capture safely …", isError: false)
 
@@ -1017,11 +1066,12 @@ final class AppModel: ObservableObject {
             let session = try CaptureSession(
                 snapshot: snapshot,
                 frameReceiver: output.frameReceiver,
-                onUnexpectedStop: { [weak self] message in
+                onUnexpectedStop: { [weak self] stop in
                     Task { @MainActor [weak self] in
                         self?.captureStoppedUnexpectedly(
                             epoch: epoch,
-                            message: message
+                            message: stop.message,
+                            userInitiated: stop.userInitiated
                         )
                     }
                 }
@@ -1086,6 +1136,7 @@ final class AppModel: ObservableObject {
             pendingCaptureStop = nil
             pendingRenderingFailure = nil
             setLifecycle(.running)
+            recoveryFailure = nil
             output.reveal()
             setStatus(
                 "Output active; waiting for the first complete frame …",
@@ -1094,8 +1145,16 @@ final class AppModel: ObservableObject {
             lifecycleLogger.notice(
                 "Output started: source \(snapshot.sourceLabel, privacy: .public) → target display \(snapshot.targetDescriptor.id, privacy: .public)"
             )
+            if let pendingFirstFrame, pendingFirstFrame.epoch == epoch {
+                self.pendingFirstFrame = nil
+                firstFrameWasRendered(epoch: epoch, path: pendingFirstFrame.path)
+            }
         } catch {
             let startError = error
+            let diagnostic = startError as NSError
+            lifecycleLogger.error(
+                "Start failed (attempt \(self.recoveryPolicy.attemptCount, privacy: .public)): \(diagnostic.domain, privacy: .public) code \(diagnostic.code, privacy: .public), \(diagnostic.localizedDescription, privacy: .private)"
+            )
             if let localSession {
                 try? await localSession.stop()
             }
@@ -1108,6 +1167,7 @@ final class AppModel: ObservableObject {
             }
             pendingCaptureStop = nil
             pendingRenderingFailure = nil
+            pendingFirstFrame = nil
 
             guard epoch == operationEpoch else {
                 if lifecycle == .starting(epoch) {
@@ -1127,9 +1187,12 @@ final class AppModel: ObservableObject {
                 blockReason = nil
                 setLifecycle(.waiting)
                 setStatus(
-                    "Waiting for the virtual source display \"\(VirtualSource.name)\" …",
+                    waitingStatusText,
                     isError: false
                 )
+                if recoveryFailure != nil {
+                    scheduleRecovery(after: "Start interrupted: \(startError.localizedDescription)")
+                }
             } else if resolvedTarget != nil {
                 blockReason = .capture
                 setLifecycle(.blocked)
@@ -1137,6 +1200,11 @@ final class AppModel: ObservableObject {
                     "Start failed: \(startError.localizedDescription) Try again with \"Start output\".",
                     isError: true
                 )
+                if case .sourceIsTarget = startError as? DisplayResolutionError {
+                    recoveryFailure = nil
+                } else {
+                    scheduleRecovery(after: "Start failed: \(startError.localizedDescription)")
+                }
             } else {
                 blockReason = nil
                 setLifecycle(.waiting)
@@ -1157,6 +1225,10 @@ final class AppModel: ObservableObject {
         }
 
         operationEpoch &+= 1
+        recoveryPolicy.didStop(at: ProcessInfo.processInfo.systemUptime)
+        lifecycleLogger.notice(
+            "Stopping output (error: \(isError, privacy: .public), attempt: \(self.recoveryPolicy.attemptCount, privacy: .public)): \(message, privacy: .private)"
+        )
         let sessions = [captureSession, startingCaptureSession].compactMap {
             $0
         }
@@ -1170,6 +1242,7 @@ final class AppModel: ObservableObject {
         activeSnapshot = nil
         pendingCaptureStop = nil
         pendingRenderingFailure = nil
+        pendingFirstFrame = nil
         setLifecycle(.stopping)
         var closedOutput: OutputWindowController?
         for output in outputs
@@ -1231,9 +1304,14 @@ final class AppModel: ObservableObject {
 
     private func captureStoppedUnexpectedly(
         epoch: UInt64,
-        message: String
+        message: String,
+        userInitiated: Bool
     ) {
         guard epoch == operationEpoch else {
+            return
+        }
+        if userInitiated {
+            requestStop(message: "Screen capture was stopped using the macOS sharing controls.")
             return
         }
         if lifecycle == .starting(epoch) {
@@ -1243,10 +1321,21 @@ final class AppModel: ObservableObject {
         guard lifecycle == .running else {
             return
         }
+        recoveryPolicy.didStop(at: ProcessInfo.processInfo.systemUptime)
 
         Task { @MainActor [weak self] in
             try? await Task.sleep(for: .milliseconds(350))
-            guard let self, epoch == operationEpoch else {
+            guard let self, epoch == operationEpoch,
+                  desiredOutput, !manualStopSuppressed else {
+                return
+            }
+            permissionGranted = CGPreflightScreenCaptureAccess()
+            guard permissionGranted else {
+                blockReason = .permission
+                await stopCommittedOutput(
+                    message: "Screen recording permission is missing. Grant access in System Settings.",
+                    isError: true
+                )
                 return
             }
             refreshDisplaySnapshot()
@@ -1263,11 +1352,7 @@ final class AppModel: ObservableObject {
                 return
             }
             if resolvedTarget != nil, resolvedSourceIsAvailable {
-                blockReason = .capture
-                await stopCommittedOutput(
-                    message: "Screen capture stopped: \(message) Try again with \"Start output\".",
-                    isError: true
-                )
+                await recoverFromFailure("Screen capture stopped: \(message)")
             } else {
                 blockReason = nil
                 await stopCommittedOutput(
@@ -1292,16 +1377,13 @@ final class AppModel: ObservableObject {
         guard lifecycle == .running else {
             return
         }
+        recoveryPolicy.didStop(at: ProcessInfo.processInfo.systemUptime)
 
         Task { @MainActor [weak self] in
             guard let self, epoch == operationEpoch else {
                 return
             }
-            blockReason = .capture
-            await stopCommittedOutput(
-                message: "Image output failed: \(message) Try again with \"Start output\".",
-                isError: true
-            )
+            await recoverFromFailure("Image output failed: \(message)")
         }
     }
 
@@ -1309,7 +1391,14 @@ final class AppModel: ObservableObject {
         epoch: UInt64,
         path: RenderingPath
     ) {
-        guard epoch == operationEpoch, lifecycle == .running else {
+        guard epoch == operationEpoch else {
+            return
+        }
+        if lifecycle == .starting(epoch) {
+            pendingFirstFrame = (epoch, path)
+            return
+        }
+        guard lifecycle == .running else {
             return
         }
         if isSelfTest {
@@ -1326,6 +1415,134 @@ final class AppModel: ObservableObject {
             "Output running (\(path.rawValue)). Stop via the status menu, the control window or ⌘.",
             isError: false
         )
+        recoveryPolicy.didRender(at: ProcessInfo.processInfo.systemUptime)
+        lifecycleLogger.notice(
+            "Output rendered its first frame (attempt \(self.recoveryPolicy.attemptCount, privacy: .public))."
+        )
+    }
+
+    private func cancelRecovery(resetBudget: Bool) {
+        recoveryGeneration &+= 1
+        if recoveryTask != nil {
+            lifecycleLogger.notice("Pending automatic recovery cancelled.")
+        }
+        recoveryTask?.cancel()
+        recoveryTask = nil
+        if lifecycle == .recovering {
+            blockReason = .capture
+            setLifecycle(.blocked)
+        }
+        if resetBudget {
+            recoveryFailure = nil
+            recoveryPolicy.reset()
+        }
+    }
+
+    private func recoverFromFailure(_ message: String) async {
+        guard desiredOutput, !manualStopSuppressed else {
+            return
+        }
+        let generation = recoveryGeneration
+        recoveryFailure = message
+        blockReason = .capture
+        await stopCommittedOutput(
+            message: "\(message) Try again with \"Start output\".",
+            isError: true
+        )
+        guard generation == recoveryGeneration,
+              lifecycle == .blocked, blockReason == .capture else {
+            return
+        }
+        scheduleRecovery(after: message)
+    }
+
+    private func scheduleRecovery(after message: String) {
+        guard autoResumeOutput, !isSelfTest,
+              desiredOutput, !manualStopSuppressed else {
+            blockReason = .capture
+            setLifecycle(.blocked)
+            setStatus("\(message) Try again with \"Start output\".", isError: true)
+            return
+        }
+        guard recoveryTask == nil else {
+            return
+        }
+        recoveryFailure = message
+        permissionGranted = CGPreflightScreenCaptureAccess()
+        guard permissionGranted else {
+            blockReason = .permission
+            setLifecycle(.blocked)
+            setStatus("Screen recording permission is missing. Grant access in System Settings.", isError: true)
+            return
+        }
+        guard resolvedTarget != nil, resolvedSourceIsAvailable else {
+            blockReason = nil
+            setLifecycle(.waiting)
+            setStatus(waitingStatusText, isError: false)
+            return
+        }
+        guard let delay = recoveryPolicy.nextDelay else {
+            blockReason = .capture
+            setLifecycle(.blocked)
+            setStatus("\(message) Automatic recovery failed after 3 attempts. Use \"Start output\" to retry.", isError: true)
+            lifecycleLogger.error("Automatic recovery exhausted after 3 attempts.")
+            return
+        }
+
+        blockReason = nil
+        setLifecycle(.recovering)
+        let attempt = recoveryPolicy.attemptCount + 1
+        let generation = recoveryGeneration
+        let epoch = operationEpoch
+        setStatus("\(message) Retrying in \(delay) seconds (\(attempt)/3).", isError: false)
+        lifecycleLogger.notice(
+            "Automatic recovery scheduled in \(delay, privacy: .public) seconds (\(attempt, privacy: .public)/3)."
+        )
+        recoveryTask = Task { @MainActor [weak self] in
+            // Task.sleep only throws on cancellation; the guard also rejects
+            // a cancelled task whose deadline raced with a user action.
+            try? await Task.sleep(for: .seconds(delay))
+            guard let self, !Task.isCancelled,
+                  generation == recoveryGeneration, epoch == operationEpoch,
+                  lifecycle == .recovering else {
+                return
+            }
+            permissionGranted = CGPreflightScreenCaptureAccess()
+            guard permissionGranted else {
+                recoveryTask = nil
+                setLifecycle(.idle)
+                await reconcileOutput()
+                return
+            }
+            refreshDisplaySnapshot()
+            if sourceKind == .window {
+                let found = await DisplayCatalog.availableWindows()
+                guard !Task.isCancelled, generation == recoveryGeneration,
+                      epoch == operationEpoch, lifecycle == .recovering else {
+                    return
+                }
+                windows = found
+                selectedSourceWindowID = resolvedSourceWindow?.id
+            }
+            guard !Task.isCancelled, generation == recoveryGeneration,
+                  epoch == operationEpoch, lifecycle == .recovering else {
+                return
+            }
+            recoveryTask = nil
+            setLifecycle(.idle)
+            permissionGranted = CGPreflightScreenCaptureAccess()
+            guard permissionGranted, let target = resolvedTarget,
+                  resolvedSourceIsAvailable else {
+                await reconcileOutput()
+                return
+            }
+            guard recoveryPolicy.beginAttempt() else {
+                scheduleRecovery(after: message)
+                return
+            }
+            lifecycleLogger.notice("Automatic recovery attempt \(attempt, privacy: .public)/3 starting.")
+            await startResolvedOutput(target: target)
+        }
     }
 
     private func finishSelfTest(_ message: String, isError: Bool) {
@@ -1426,7 +1643,7 @@ final class AppModel: ObservableObject {
         switch newValue {
         case .starting, .stopping:
             isBusy = true
-        case .idle, .waiting, .running, .blocked:
+        case .idle, .waiting, .recovering, .running, .blocked:
             isBusy = false
         }
     }
