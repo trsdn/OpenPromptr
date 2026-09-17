@@ -13,6 +13,12 @@ let package = Package(
             targets: ["OpenPromptr"]
         )
     ],
+    dependencies: [
+        // Pinned exactly: the notarization broker builds with
+        // `--only-use-versions-from-resolved-file` against its own copy of
+        // Package.resolved.
+        .package(url: "https://github.com/mxcl/AppUpdater.git", exact: "4.1.2")
+    ],
     targets: [
         .target(
             name: "OpenPromptrCore"
@@ -32,7 +38,10 @@ let package = Package(
         ),
         .executableTarget(
             name: "OpenPromptr",
-            dependencies: ["OpenPromptrCore", "VirtualDisplayBridge"],
+            dependencies: [
+                "OpenPromptrCore", "VirtualDisplayBridge",
+                .product(name: "AppUpdater", package: "AppUpdater"),
+            ],
             linkerSettings: [
                 .linkedFramework("AppKit"),
                 .linkedFramework("AVFoundation"),
