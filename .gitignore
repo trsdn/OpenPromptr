@@ -2,7 +2,7 @@
 .build/
 .swiftpm/
 
-# Build-Artefakte
+# Build artifacts
 dist/
 Resources/AppIcon.iconset/
 

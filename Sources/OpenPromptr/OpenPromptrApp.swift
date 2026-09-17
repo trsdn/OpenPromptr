@@ -50,6 +50,15 @@ final class AppStatusItemController: NSObject, NSMenuDelegate {
         menu.addItem(showItem)
         menu.addItem(.separator())
 
+        let aboutItem = NSMenuItem(
+            title: "About OpenPromptr",
+            action: #selector(showAbout),
+            keyEquivalent: ""
+        )
+        aboutItem.target = self
+        menu.addItem(aboutItem)
+        menu.addItem(.separator())
+
         let quitItem = NSMenuItem(
             title: "Quit OpenPromptr",
             action: #selector(quit),
@@ -89,6 +98,11 @@ final class AppStatusItemController: NSObject, NSMenuDelegate {
     @objc
     private func showControls() {
         showControlsHandler?()
+    }
+
+    @objc
+    private func showAbout() {
+        AboutPanel.show()
     }
 
     @objc
@@ -186,6 +200,12 @@ struct OpenPromptrApp: App {
         }
         .windowResizability(.contentSize)
         .commands {
+            CommandGroup(replacing: .appInfo) {
+                Button("About OpenPromptr") {
+                    AboutPanel.show()
+                }
+            }
+
             CommandMenu("Output") {
                 Button("Start Output") {
                     Task { @MainActor in

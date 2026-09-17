@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+
 @testable import OpenPromptrCore
 
 @Test("Teleprompter default mirrors horizontally at zero degrees")
@@ -20,10 +21,11 @@ func transformCodableRoundTrip() throws {
             mirrorVertically: rotation.rawValue.isMultiple(of: 180)
         )
         let data = try JSONEncoder().encode(original)
-        #expect(try JSONDecoder().decode(
-            DisplayTransform.self,
-            from: data
-        ) == original)
+        #expect(
+            try JSONDecoder().decode(
+                DisplayTransform.self,
+                from: data
+            ) == original)
     }
 }
 
@@ -32,7 +34,7 @@ func displayIdentityUsesSerial() {
     let stored = identity(serial: 42, uuid: "A", name: "Monitor A")
     let candidates = [
         identity(serial: 7, uuid: "A", name: "Monitor A"),
-        identity(serial: 42, uuid: "B", name: "Umbenannt")
+        identity(serial: 42, uuid: "B", name: "Umbenannt"),
     ]
 
     #expect(
@@ -48,7 +50,7 @@ func displayIdentityUsesUUID() {
     let stored = identity(serial: nil, uuid: "ABC", name: "Monitor")
     let candidates = [
         identity(serial: nil, uuid: "DEF", name: "Monitor"),
-        identity(serial: nil, uuid: "abc", name: "Anderer Name")
+        identity(serial: nil, uuid: "abc", name: "Anderer Name"),
     ]
 
     #expect(
@@ -65,14 +67,16 @@ func displayIdentityDoesNotDowngrade() {
     let withUUID = identity(serial: nil, uuid: "ABC", name: "Monitor")
     let weak = identity(serial: nil, uuid: nil, name: "Monitor")
 
-    #expect(DisplayIdentityMatcher.uniqueMatch(
-        for: withSerial,
-        among: [weak]
-    ) == nil)
-    #expect(DisplayIdentityMatcher.uniqueMatch(
-        for: withUUID,
-        among: [weak]
-    ) == nil)
+    #expect(
+        DisplayIdentityMatcher.uniqueMatch(
+            for: withSerial,
+            among: [weak]
+        ) == nil)
+    #expect(
+        DisplayIdentityMatcher.uniqueMatch(
+            for: withUUID,
+            among: [weak]
+        ) == nil)
 }
 
 @Test("Known conflicting hardware rejects an equal UUID")
@@ -92,10 +96,11 @@ func displayUUIDRejectsHardwareConflict() {
         name: "Monitor"
     )
 
-    #expect(DisplayIdentityMatcher.uniqueMatch(
-        for: stored,
-        among: [conflicting]
-    ) == nil)
+    #expect(
+        DisplayIdentityMatcher.uniqueMatch(
+            for: stored,
+            among: [conflicting]
+        ) == nil)
 }
 
 @Test("Vendor and product alone never select a replacement display")
@@ -119,10 +124,11 @@ func hardwareModelAloneIsInsufficient() {
         height: 1440
     )
 
-    #expect(DisplayIdentityMatcher.uniqueMatch(
-        for: stored,
-        among: [replacement]
-    ) == nil)
+    #expect(
+        DisplayIdentityMatcher.uniqueMatch(
+            for: stored,
+            among: [replacement]
+        ) == nil)
 }
 
 @Test("Stored vendor and product never downgrade to name-only identity")
@@ -146,10 +152,11 @@ func hardwareIdentityDoesNotDowngrade() {
         height: 1080
     )
 
-    #expect(DisplayIdentityMatcher.uniqueMatch(
-        for: stored,
-        among: [nameOnly]
-    ) == nil)
+    #expect(
+        DisplayIdentityMatcher.uniqueMatch(
+            for: stored,
+            among: [nameOnly]
+        ) == nil)
 }
 
 @Test("Name and native dimensions fallback must be unique")
@@ -195,13 +202,15 @@ func targetConfigurationResolution() {
         transform: .teleprompterDefault
     )
 
-    #expect(configuration.resolvedTargetIndex(among: [
-        identity(serial: 8, uuid: "OTHER", name: "Kontrolle"),
-        selected
-    ]) == 1)
-    #expect(TeleprompterConfiguration().resolvedTargetIndex(
-        among: [selected]
-    ) == nil)
+    #expect(
+        configuration.resolvedTargetIndex(among: [
+            identity(serial: 8, uuid: "OTHER", name: "Kontrolle"),
+            selected,
+        ]) == 1)
+    #expect(
+        TeleprompterConfiguration().resolvedTargetIndex(
+            among: [selected]
+        ) == nil)
 }
 
 @Test("Legacy preset display key is decoded as the target")
@@ -332,7 +341,7 @@ func legacyPresetsMigrateToSingleConfiguration() throws {
         presets: [
             LegacySlot(name: "Preset 1", configuration: .init()),
             LegacySlot(name: "Preset 2", configuration: wanted),
-            LegacySlot(name: "Preset 3", configuration: .init())
+            LegacySlot(name: "Preset 3", configuration: .init()),
         ],
         autoStartOutput: true
     )
@@ -350,7 +359,8 @@ func legacyPresetsMigrateToSingleConfiguration() throws {
 
 @Test("Existing single-configuration settings default recovery to off")
 func settingsWithoutRecoveryKeepTheirConfiguration() throws {
-    let data = Data("""
+    let data = Data(
+        """
         {
             "schemaVersion": 2,
             "autoStartOutput": true,
@@ -380,9 +390,10 @@ func settingsRecoveryIsIndependent() throws {
                 autoStartOutput: autoStart,
                 autoResumeOutput: autoResume
             )
-            #expect(try AppSettingsCodec.decode(
-                AppSettingsCodec.encode(settings)
-            ) == settings)
+            #expect(
+                try AppSettingsCodec.decode(
+                    AppSettingsCodec.encode(settings)
+                ) == settings)
         }
     }
 }

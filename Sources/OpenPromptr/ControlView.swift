@@ -1,6 +1,6 @@
 import CoreGraphics
-import SwiftUI
 import OpenPromptrCore
+import SwiftUI
 
 /// A titled block of related controls. Keeps the window scannable without
 /// relying on the heavier platform `GroupBox` chrome.
@@ -170,14 +170,17 @@ struct ControlView: View {
                 }
             }
             .labelsHidden()
+            .accessibilityLabel("Source")
             .pickerStyle(.segmented)
             .disabled(model.isBusy)
 
             switch model.sourceKind {
             case .virtualDisplay:
-                Text("Creates an invisible display named \"\(model.virtualSourceName)\". Windows have to be moved there blindly; it only becomes visible as the mirrored image on the target display.")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                Text(
+                    "Creates an invisible display named \"\(model.virtualSourceName)\". Windows have to be moved there blindly; it only becomes visible as the mirrored image on the target display."
+                )
+                .font(.caption2)
+                .foregroundStyle(.secondary)
 
                 Button {
                     model.openDisplaySettings()
@@ -189,7 +192,9 @@ struct ControlView: View {
                     .font(.caption)
                 }
                 .buttonStyle(.link)
-                .help("There you can define which edge the invisible display sits on and where the pointer leaves it.")
+                .help(
+                    "There you can define which edge the invisible display sits on and where the pointer leaves it."
+                )
             case .display:
                 Picker("Source display", selection: sourceDisplayBinding) {
                     Text("Please select")
@@ -200,6 +205,7 @@ struct ControlView: View {
                     }
                 }
                 .labelsHidden()
+                .accessibilityLabel("Source display")
                 .pickerStyle(.menu)
                 .disabled(model.isRunning || model.isBusy)
 
@@ -217,6 +223,7 @@ struct ControlView: View {
                         }
                     }
                     .labelsHidden()
+                    .accessibilityLabel("Source window")
                     .pickerStyle(.menu)
                     .disabled(model.isRunning || model.isBusy)
 
@@ -227,6 +234,7 @@ struct ControlView: View {
                     }
                     .disabled(model.isRefreshingWindows)
                     .help("Refresh window list")
+                    .accessibilityLabel("Refresh window list")
 
                     if model.isRefreshingWindows {
                         ProgressView()
@@ -234,9 +242,11 @@ struct ControlView: View {
                     }
                 }
 
-                Text("Mirrors exactly one window, for example the presenter view. Everything stays visible and fully usable.")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                Text(
+                    "Mirrors exactly one window, for example the presenter view. Everything stays visible and fully usable."
+                )
+                .font(.caption2)
+                .foregroundStyle(.secondary)
             }
         }
     }
@@ -252,6 +262,7 @@ struct ControlView: View {
                 }
             }
             .labelsHidden()
+            .accessibilityLabel("Target display")
             .pickerStyle(.menu)
             .frame(maxWidth: .infinity, alignment: .leading)
             .disabled(model.isRunning || model.isBusy)
@@ -285,6 +296,7 @@ struct ControlView: View {
                         }
                     }
                     .labelsHidden()
+                    .accessibilityLabel("Rotation")
                     .pickerStyle(.segmented)
 
                     HStack(spacing: 16) {
@@ -351,11 +363,21 @@ struct ControlView: View {
                     }
                 }
 
-                Text(model.loginItemStatusText)
-                    .font(.caption2)
-                    .foregroundStyle(
-                        model.loginItemStatusIsError ? .red : .secondary
+                Label {
+                    Text(model.loginItemStatusText)
+                        .font(.caption2)
+                        .foregroundStyle(
+                            model.loginItemStatusIsError ? .red : .secondary
+                        )
+                } icon: {
+                    Image(
+                        systemName: model.loginItemStatusIsError
+                            ? "exclamationmark.circle.fill"
+                            : "info.circle.fill"
                     )
+                    .font(.caption2)
+                    .foregroundStyle(model.loginItemStatusIsError ? .red : .secondary)
+                }
 
                 if !model.appIsInApplicationsFolder {
                     Text(

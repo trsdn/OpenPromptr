@@ -1,11 +1,11 @@
-import AppKit
 import AVFoundation
+import AppKit
 import CoreImage
 import CoreMedia
 import CoreVideo
 import Metal
-import QuartzCore
 import OpenPromptrCore
+import QuartzCore
 
 enum RenderingPath: String, Sendable {
     case sampleBufferDisplayLayer = "AVSampleBufferDisplayLayer"
@@ -100,7 +100,8 @@ private final class DirectSampleBufferPresenter: @unchecked Sendable {
         } else if !layer.isReadyForMoreMediaData {
             let now = ProcessInfo.processInfo.systemUptime
             if let backpressureStartUptime,
-               now - backpressureStartUptime >= 2 {
+                now - backpressureStartUptime >= 2
+            {
                 isActive = false
                 event = .failed(
                     reason: "AVSampleBufferDisplayLayer accepted no frames for two seconds."
@@ -345,13 +346,13 @@ final class FrameRenderer {
         }
 
         switch event {
-        case let .enqueued(size):
+        case .enqueued(let size):
             lastSampleSize = size
             updateLayerGeometry()
             if isStarted {
                 schedulePresentationProbe()
             }
-        case let .failed(reason):
+        case .failed(let reason):
             activateCoreImageFallback(reason: reason)
         }
     }
@@ -383,7 +384,8 @@ final class FrameRenderer {
             }
             if !confirmDirectPresentationIfPossible() {
                 activateCoreImageFallback(
-                    reason: "AVSampleBufferDisplayLayer stayed in the unknown status after the first frame."
+                    reason:
+                        "AVSampleBufferDisplayLayer stayed in the unknown status after the first frame."
                 )
             }
         }
@@ -419,16 +421,17 @@ final class FrameRenderer {
         layoutFallbackLayer(in: targetBounds)
 
         guard renderPath == .sampleBuffer,
-              let lastSampleSize,
-              targetBounds.width > 0,
-              targetBounds.height > 0,
-              lastSampleSize != PixelSize(width: 0, height: 0),
-              lastTargetBounds != targetBounds
+            let lastSampleSize,
+            targetBounds.width > 0,
+            targetBounds.height > 0,
+            lastSampleSize != PixelSize(width: 0, height: 0),
+            lastTargetBounds != targetBounds
                 || sampleBufferLayer.affineTransform()
                     != geometryTransform(
                         sampleSize: lastSampleSize,
                         targetBounds: targetBounds
-                    ) else {
+                    )
+        else {
             return
         }
         layoutSampleBufferLayer(
@@ -453,12 +456,14 @@ final class FrameRenderer {
         sampleSize: PixelSize,
         targetBounds: CGRect
     ) {
-        guard let geometry = TransformGeometry.layerPresentationGeometry(
-            sourceWidth: sampleSize.width,
-            sourceHeight: sampleSize.height,
-            targetBounds: targetBounds,
-            transform: displayTransform
-        ) else {
+        guard
+            let geometry = TransformGeometry.layerPresentationGeometry(
+                sourceWidth: sampleSize.width,
+                sourceHeight: sampleSize.height,
+                targetBounds: targetBounds,
+                transform: displayTransform
+            )
+        else {
             return
         }
 
@@ -537,7 +542,8 @@ final class FrameRenderer {
             // path-selection log and continue the independent fallback.
         }
         guard let frame = frameReceiver.frameStore.current(),
-              let pixelBuffer = frame.sampleBuffer.imageBuffer else {
+            let pixelBuffer = frame.sampleBuffer.imageBuffer
+        else {
             return
         }
         renderCoreImageFallback(
@@ -550,25 +556,30 @@ final class FrameRenderer {
         pixelBuffer: CVPixelBuffer,
         generation: UInt64
     ) {
-        guard fallbackNeedsRender
-                || generation != lastFallbackRenderedGeneration else {
+        guard
+            fallbackNeedsRender
+                || generation != lastFallbackRenderedGeneration
+        else {
             return
         }
 
         let outputImage = transformedImage(from: pixelBuffer)
         let outputExtent = outputImage.extent.integral
         guard outputExtent.width > 0,
-              outputExtent.height > 0 else {
+            outputExtent.height > 0
+        else {
             recordFallbackFailure("Core Image produced an empty image extent.")
             return
         }
 
-        guard let cgImage = coreImageContext().createCGImage(
-            outputImage,
-            from: outputExtent,
-            format: .RGBA8,
-            colorSpace: colorSpace
-        ) else {
+        guard
+            let cgImage = coreImageContext().createCGImage(
+                outputImage,
+                from: outputExtent,
+                format: .RGBA8,
+                colorSpace: colorSpace
+            )
+        else {
             recordFallbackFailure(
                 "Core Image could not produce a CGImage output frame."
             )
@@ -600,7 +611,7 @@ final class FrameRenderer {
 
         let contextOptions: [CIContextOption: Any] = [
             .cacheIntermediates: false,
-            .workingColorSpace: colorSpace
+            .workingColorSpace: colorSpace,
         ]
         let newContext: CIContext
         if let device = MTLCreateSystemDefaultDevice() {

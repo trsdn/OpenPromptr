@@ -25,11 +25,11 @@ enum VirtualDisplayHostError: LocalizedError {
         switch self {
         case .executableUnavailable:
             return "The application executable could not be found."
-        case let .launchFailed(message):
+        case .launchFailed(let message):
             return "The display host could not be started: \(message)"
-        case let .exitedBeforeReady(status):
+        case .exitedBeforeReady(let status):
             return "The display host exited before it was ready (status \(status))."
-        case let .invalidResponse(response):
+        case .invalidResponse(let response):
             return "The display host reported an invalid response: \(response)"
         case .startupTimedOut:
             return "The display host did not become ready in time."
@@ -39,12 +39,14 @@ enum VirtualDisplayHostError: LocalizedError {
 
 enum VirtualDisplayHostMain {
     static func run() -> Never {
-        guard let display = VirtualDisplay(
-            name: VirtualSource.name,
-            width: UInt32(VirtualSource.width),
-            height: UInt32(VirtualSource.height),
-            refreshRate: VirtualSource.refreshRate
-        ) else {
+        guard
+            let display = VirtualDisplay(
+                name: VirtualSource.name,
+                width: UInt32(VirtualSource.width),
+                height: UInt32(VirtualSource.height),
+                refreshRate: VirtualSource.refreshRate
+            )
+        else {
             fputs("OPR_DISPLAY_ERROR creation_failed\n", stderr)
             fflush(stderr)
             exit(EXIT_FAILURE)
@@ -99,16 +101,19 @@ final class VirtualDisplayHostProcess {
 
         do {
             let response = try await firstOutputLine()
-            guard response.hasPrefix(
-                VirtualDisplayHostProtocol.readyPrefix
-            ) else {
+            guard
+                response.hasPrefix(
+                    VirtualDisplayHostProtocol.readyPrefix
+                )
+            else {
                 throw VirtualDisplayHostError.invalidResponse(response)
             }
             let rawID = response.dropFirst(
                 VirtualDisplayHostProtocol.readyPrefix.count
             )
             guard let displayID = CGDirectDisplayID(rawID),
-                  displayID != 0 else {
+                displayID != 0
+            else {
                 throw VirtualDisplayHostError.invalidResponse(response)
             }
             return displayID

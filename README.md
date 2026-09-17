@@ -305,6 +305,16 @@ cancellation, and results; potentially sensitive error text is private.
 - By default, the build script creates the current Mac architecture, not a
   Universal Binary.
 
+## Accessibility
+
+Every control is a standard SwiftUI `Button`, `Toggle`, or `Picker`, which
+macOS gives standard keyboard focus order and a visible focus ring for free.
+Icon-only controls and hidden picker labels carry an explicit accessibility
+label, and status text that used to be color-only (the launch-at-login line)
+now also carries an icon. This has not been tested end-to-end with VoiceOver.
+Automatic-recovery and status changes are conveyed visually and in text only;
+there are no sound cues.
+
 ## Contributing
 
 Contributions are welcome. The development workflow, language and commit
