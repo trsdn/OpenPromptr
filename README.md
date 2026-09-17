@@ -297,7 +297,8 @@ Only Developer ID-signed releases from this project's own signing identity are
 accepted; nothing else can be installed this way. Until a signed release
 exists (tracked in
 [issue #7](https://github.com/trsdn/OpenPromptr/issues/7)), a check simply
-finds nothing to install.
+finds nothing to install. See [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md)
+for how a release is actually cut and published.
 
 ## Limitations
 

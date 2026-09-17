@@ -115,17 +115,17 @@ fallback for a non-git checkout.
 
 ## Releases go through the broker
 
-Distributable, signed and notarized builds are meant to come from
-`trsdn/macos-notarization-broker`, the same as sibling apps in this account.
-As of this writing the broker's `openpromptr` profile is proposed but not yet
-merged (trsdn/macos-notarization-broker#49, tracked in issue #7) — there is
-no automated release path yet. `build-app.sh` is a local convenience for
-development builds, signed with whatever identity is available locally
-(falling back to ad-hoc with a warning); the broker assembles the app bundle
-itself via its own `assemble_openpromptr` build step, so `build-app.sh` is
-not necessarily the definition of what a broker-built release bundle looks
-like — keep the two in sync deliberately, not by assumption, if one changes
-(bundle layout, Info.plist location, resource bundles).
+Distributable, signed and notarized builds come from
+`trsdn/macos-notarization-broker` (profile `openpromptr`), the same as
+sibling apps in this account. See `RELEASE_CHECKLIST.md` for the actual
+per-release steps. No release has been cut yet (tracked in issue #7).
+`build-app.sh` is a local convenience for development builds, signed with
+whatever identity is available locally (falling back to ad-hoc with a
+warning); the broker assembles the app bundle itself via its own
+`assemble_openpromptr` build step, so `build-app.sh` is not necessarily the
+definition of what a broker-built release bundle looks like — keep the two
+in sync deliberately, not by assumption, if one changes (bundle layout,
+Info.plist location, resource bundles).
 
 ## Architecture
 
