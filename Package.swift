@@ -27,7 +27,7 @@ let package = Package(
             ],
             linkerSettings: [
                 .linkedFramework("Foundation"),
-                .linkedFramework("CoreGraphics")
+                .linkedFramework("CoreGraphics"),
             ]
         ),
         .executableTarget(
@@ -44,13 +44,13 @@ let package = Package(
                 .linkedFramework("QuartzCore"),
                 .linkedFramework("ServiceManagement"),
                 .linkedFramework("ScreenCaptureKit"),
-                .linkedFramework("SwiftUI")
+                .linkedFramework("SwiftUI"),
             ]
         ),
         .testTarget(
             name: "OpenPromptrCoreTests",
             dependencies: ["OpenPromptrCore"]
-        )
+        ),
     ],
     swiftLanguageModes: [.v6]
 )

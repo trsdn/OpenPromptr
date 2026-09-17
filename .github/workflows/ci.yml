@@ -21,6 +21,8 @@ jobs:
         run: swift build
       - name: Test
         run: swift test
+      - name: Lint formatting
+        run: swift format lint --strict --recursive Sources Tests Package.swift
 
   bundle:
     name: App bundle

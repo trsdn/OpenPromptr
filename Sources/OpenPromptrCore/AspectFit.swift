@@ -26,9 +26,10 @@ public enum AspectFit {
             rotation: rotation
         )
         guard oriented.width > 0,
-              oriented.height > 0,
-              targetWidth > 0,
-              targetHeight > 0 else {
+            oriented.height > 0,
+            targetWidth > 0,
+            targetHeight > 0
+        else {
             return AspectFitScale(x: 0, y: 0)
         }
 

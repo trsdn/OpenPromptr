@@ -1,7 +1,7 @@
 import AppKit
 import CoreGraphics
-@preconcurrency import ScreenCaptureKit
 import OpenPromptrCore
+@preconcurrency import ScreenCaptureKit
 
 struct DisplayDescriptor: Identifiable, Hashable, Sendable {
     let id: CGDirectDisplayID
@@ -57,7 +57,7 @@ struct ResolvedCaptureSnapshot {
     var excludedApplications: [SCRunningApplication] = []
 
     var sourceDisplayID: CGDirectDisplayID? {
-        if case let .display(_, displayID) = source {
+        if case .display(_, let displayID) = source {
             return displayID
         }
         return nil
@@ -82,8 +82,9 @@ enum DisplayResolutionError: LocalizedError {
         case .sourceWindowUnavailable:
             return "The selected source window is not unambiguously open."
         case .sourceIsTarget:
-            return "Source and target must not be the same display, otherwise an optical feedback loop occurs."
-        case let .screenCaptureSourceUnavailable(displayID):
+            return
+                "Source and target must not be the same display, otherwise an optical feedback loop occurs."
+        case .screenCaptureSourceUnavailable(let displayID):
             return "ScreenCaptureKit did not find the source display with ID \(displayID)."
         case .targetDisplayUnavailable:
             return "The selected target display is not unambiguously connected."
@@ -102,23 +103,26 @@ enum DisplayCatalog {
     ) -> [DisplayDescriptor] {
         NSScreen.screens.compactMap { screen in
             guard let displayID = screen.displayID,
-                  displayID != excludedID,
-                  CGDisplayVendorNumber(displayID) != 0x544D else {
+                displayID != excludedID,
+                CGDisplayVendorNumber(displayID) != 0x544D
+            else {
                 return nil
             }
 
             let currentMode = CGDisplayCopyDisplayMode(displayID)
             let nativeMode =
                 (CGDisplayCopyAllDisplayModes(displayID, nil)
-                    as? [CGDisplayMode])?
-                    .max {
-                        ($0.pixelWidth * $0.pixelHeight)
-                            < ($1.pixelWidth * $1.pixelHeight)
-                    }
-            let nativeWidth = nativeMode?.pixelWidth
+                as? [CGDisplayMode])?
+                .max {
+                    ($0.pixelWidth * $0.pixelHeight)
+                        < ($1.pixelWidth * $1.pixelHeight)
+                }
+            let nativeWidth =
+                nativeMode?.pixelWidth
                 ?? currentMode?.pixelWidth
                 ?? CGDisplayPixelsWide(displayID)
-            let nativeHeight = nativeMode?.pixelHeight
+            let nativeHeight =
+                nativeMode?.pixelHeight
                 ?? currentMode?.pixelHeight
                 ?? CGDisplayPixelsHigh(displayID)
 
@@ -152,10 +156,11 @@ enum DisplayCatalog {
         among displays: [DisplayDescriptor]
     ) -> DisplayDescriptor? {
         guard let identity,
-              let index = DisplayIdentityMatcher.uniqueMatch(
+            let index = DisplayIdentityMatcher.uniqueMatch(
                 for: identity,
                 among: displays.map(\.identity)
-              ) else {
+            )
+        else {
             return nil
         }
         return displays[index]
@@ -166,10 +171,11 @@ enum DisplayCatalog {
         among windows: [WindowDescriptor]
     ) -> WindowDescriptor? {
         guard let identity,
-              let index = WindowIdentityMatcher.uniqueMatch(
+            let index = WindowIdentityMatcher.uniqueMatch(
                 for: identity,
                 among: windows.map(\.identity)
-              ) else {
+            )
+        else {
             return nil
         }
         return windows[index]
@@ -197,8 +203,9 @@ enum DisplayCatalog {
         return content.windows.compactMap { window -> WindowDescriptor? in
             let application = window.owningApplication
             guard let application,
-                  application.processID != ownProcessID,
-                  application.bundleIdentifier != ownBundleID else {
+                application.processID != ownProcessID,
+                application.bundleIdentifier != ownBundleID
+            else {
                 return nil
             }
             let width = Int(window.frame.width.rounded())
@@ -299,12 +306,11 @@ enum DisplayCatalog {
             matching: source.id
         )
         let ownProcessID = ProcessInfo.processInfo.processIdentifier
-        let ownApplications = (
-            try? await SCShareableContent.excludingDesktopWindows(
+        let ownApplications =
+            (try? await SCShareableContent.excludingDesktopWindows(
                 false,
                 onScreenWindowsOnly: false
-            ).applications.filter { $0.processID == ownProcessID }
-        ) ?? []
+            ).applications.filter { $0.processID == ownProcessID }) ?? []
 
         return ResolvedCaptureSnapshot(
             source: .display(captureDisplay, source.id),
@@ -331,9 +337,11 @@ enum DisplayCatalog {
         } catch {
             throw DisplayResolutionError.sourceWindowUnavailable
         }
-        guard let window = content.windows.first(where: {
-            $0.windowID == source.id
-        }) else {
+        guard
+            let window = content.windows.first(where: {
+                $0.windowID == source.id
+            })
+        else {
             throw DisplayResolutionError.sourceWindowUnavailable
         }
 
@@ -354,8 +362,9 @@ enum DisplayCatalog {
     ) throws {
         if snapshot.sourceKind == .virtualDisplay {
             guard let virtualDisplayID,
-                  snapshot.sourceDisplayID == virtualDisplayID,
-                  onlineDisplayIDs().contains(virtualDisplayID) else {
+                snapshot.sourceDisplayID == virtualDisplayID,
+                onlineDisplayIDs().contains(virtualDisplayID)
+            else {
                 throw DisplayResolutionError.virtualSourceUnavailable
             }
         } else if let sourceDisplayID = snapshot.sourceDisplayID {
@@ -365,12 +374,14 @@ enum DisplayCatalog {
         }
 
         let physical = connectedDisplays(excluding: virtualDisplayID)
-        guard let current = physical.first(where: {
-            $0.id == snapshot.targetDescriptor.id
-        }),
-        current.pixelWidth == snapshot.targetDescriptor.pixelWidth,
-        current.pixelHeight == snapshot.targetDescriptor.pixelHeight,
-        current.frame == snapshot.targetDescriptor.frame else {
+        guard
+            let current = physical.first(where: {
+                $0.id == snapshot.targetDescriptor.id
+            }),
+            current.pixelWidth == snapshot.targetDescriptor.pixelWidth,
+            current.pixelHeight == snapshot.targetDescriptor.pixelHeight,
+            current.frame == snapshot.targetDescriptor.frame
+        else {
             throw DisplayResolutionError.configurationChanged
         }
     }
@@ -378,9 +389,11 @@ enum DisplayCatalog {
     private static func targetScreen(
         for target: DisplayDescriptor
     ) throws -> NSScreen {
-        guard let screen = NSScreen.screens.first(where: {
-            $0.displayID == target.id
-        }) else {
+        guard
+            let screen = NSScreen.screens.first(where: {
+                $0.displayID == target.id
+            })
+        else {
             throw DisplayResolutionError.targetDisplayUnavailable
         }
         return screen
@@ -457,9 +470,11 @@ enum DisplayCatalog {
 
 extension NSScreen {
     var displayID: CGDirectDisplayID? {
-        guard let number = deviceDescription[
-            NSDeviceDescriptionKey("NSScreenNumber")
-        ] as? NSNumber else {
+        guard
+            let number = deviceDescription[
+                NSDeviceDescriptionKey("NSScreenNumber")
+            ] as? NSNumber
+        else {
             return nil
         }
         return CGDirectDisplayID(number.uint32Value)
