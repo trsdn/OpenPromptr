@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-09-17
+
+### Added
+
+- A local HTTP API (`127.0.0.1` only, token-authenticated, off by default)
+  for starting/stopping output and reading status from a script or a Stream
+  Deck, without going through the menu bar.
+- In-app update checking against GitHub Releases, with **Check for
+  Updates…**/**Check for Updates Automatically** and an install flow that
+  never interrupts a running or recovering session.
+- An About panel showing the app version and links to the repository and
+  issue tracker; a `--version` command-line flag.
+
+### Changed
+
+- The app version is now derived from the release tag automatically instead
+  of being hand-maintained in `Info.plist`.
+
+### Fixed
+
+- A status indicator that previously conveyed error/normal state by color
+  alone now also shows an icon.
+
 ## [1.1.0] - 2026-09-07
 
 ### Changed
@@ -46,7 +69,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Static same-screen captures.
 - ScreenCaptureKit support on Swift 6.1.
 
-[Unreleased]: https://github.com/trsdn/OpenPromptr/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/trsdn/OpenPromptr/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/trsdn/OpenPromptr/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/trsdn/OpenPromptr/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/trsdn/OpenPromptr/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/trsdn/OpenPromptr/releases/tag/v1.0.0
