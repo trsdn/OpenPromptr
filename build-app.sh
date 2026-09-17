@@ -69,6 +69,11 @@ if [[ -z "${VERSION:-}" ]]; then
             | sed -E 's/^v//' || true
     )"
 fi
+if [[ -n "${VERSION}" && ! "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    printf 'Warning: tag-derived version "%s" is not X.Y.Z; keeping the version already in Config/Info.plist.\n' \
+        "${VERSION}" >&2
+    VERSION=""
+fi
 if [[ -z "${BUILD:-}" ]]; then
     BUILD="$(git -C "${SCRIPT_DIR}" rev-list --count HEAD 2>/dev/null || true)"
 fi
