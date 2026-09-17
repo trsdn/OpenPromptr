@@ -37,5 +37,9 @@
     <string>NSApplication</string>
     <key>NSScreenCaptureUsageDescription</key>
     <string>OpenPromptr needs screen recording access to capture the selected source - a private virtual display, a connected display or a single window - and to show its content mirrored or rotated on the selected target display.</string>
+    <key>OPRIssueTrackerURL</key>
+    <string>https://github.com/trsdn/OpenPromptr/issues</string>
+    <key>OPRRepositoryURL</key>
+    <string>https://github.com/trsdn/OpenPromptr</string>
 </dict>
 </plist>
