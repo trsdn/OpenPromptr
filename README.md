@@ -300,6 +300,42 @@ exists (tracked in
 finds nothing to install. See [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md)
 for how a release is actually cut and published.
 
+## Local HTTP API
+
+For control from outside the app — a script, a Stream Deck plugin — since
+the menu bar isn't reachable that way. Off by default; enable **Enable
+local HTTP API** under **Remote control**.
+
+- Binds `127.0.0.1` only; never reachable from the network.
+- A random token is generated on every launch and published, with the
+  bound port, to
+  `~/Library/Application Support/com.github.trsdn.OpenPromptr/local-api.json`
+  (mode 0600). **Reveal Connection Info in Finder** in the same section
+  opens it directly.
+- Every request needs `Authorization: Bearer <token>`. A request carrying
+  an `Origin` header — including from DNS-rebinding attempts — is rejected
+  outright, regardless of its value.
+- Actions are fire-and-forget: a `POST` returns `{"ok": true}` immediately
+  without waiting for the change to finish; poll `GET /v1/state` to see the
+  result, the same way a Stream Deck button would.
+
+| Endpoint | Effect |
+| --- | --- |
+| `GET /v1/state` | Current status, source, target display, and transform |
+| `POST /v1/output/start` | Start output |
+| `POST /v1/output/stop` | Stop output |
+| `POST /v1/output/toggle` | Start or stop, whichever applies |
+| `POST /v1/transform` `{"rotation":180,"mirrorH":true}` | Patch the transform — any subset of `rotation`/`mirrorH`/`mirrorV` |
+| `POST /v1/display` `{"id":3}` | Select the target display by ID (see `GET /v1/state`'s `display.id`) |
+
+```bash
+API=$(cat ~/Library/Application\ Support/com.github.trsdn.OpenPromptr/local-api.json)
+PORT=$(python3 -c "import json,sys;print(json.loads(sys.argv[1])['port'])" "$API")
+TOKEN=$(python3 -c "import json,sys;print(json.loads(sys.argv[1])['token'])" "$API")
+curl -s "http://127.0.0.1:$PORT/v1/state" -H "Authorization: Bearer $TOKEN"
+curl -s -X POST "http://127.0.0.1:$PORT/v1/output/toggle" -H "Authorization: Bearer $TOKEN"
+```
+
 ## Limitations
 
 - The app uses a **private, undocumented** CoreGraphics API for the virtual
@@ -360,3 +396,4 @@ The [Code of Conduct](CODE_OF_CONDUCT.md) applies to how we work together.
 
 - [AppUpdater](https://github.com/mxcl/AppUpdater) 4.1.2 — Unlicense.
 - [Version](https://github.com/mxcl/Version) (AppUpdater's own dependency) — Apache-2.0.
+- [Swifter](https://github.com/httpswift/swifter) 1.5.0 — BSD-3-Clause.
