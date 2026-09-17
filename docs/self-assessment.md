@@ -43,12 +43,6 @@ Archived (the repository is active).
   a distributed package) and no explicit written compatibility/versioning
   policy beyond "tags are semver, see CHANGELOG."
 
-## Fail (tracked, not fixed here)
-
-- **R07** — release notes are written from the CHANGELOG entry by hand
-  (`RELEASE_CHECKLIST.md` step 7); nothing yet fails the release when that
-  entry is missing, empty, or still sitting in `[Unreleased]`.
-
 ## Resolved since the last pass
 
 - **R03–R08** — `v1.2.0` (2026-09-17) is a real, signed, notarized release:
@@ -56,12 +50,18 @@ Archived (the repository is active).
   correct source (#49, #50) and produces `OpenPromptr-v{version}-macOS-arm64.{zip,dmg}`
   plus the AppUpdater-required `OpenPromptr-{version}.dmg` copy (R03, R04).
   The broker's own preflight/`validate_app_tree` smoke-tests the bundle
-  before signing (R05). Release notes come from the CHANGELOG entry (R06,
-  though not yet automated — see R07 above). `provenance.json` is uploaded
-  as a release asset, recording the source commit, tag, and signing
-  identity, so a consumer can verify where the artifact came from (R08).
-  Verified live: `xcrun stapler validate` and `spctl --assess` both accept
-  the published DMG as "Notarized Developer ID".
+  before signing (R05). Release notes come from the CHANGELOG entry (R06).
+  As of `scripts/request.sh` on the broker (PR #53), this is enforced, not
+  just practiced: `--publish` fetches `CHANGELOG.md` at the tag through the
+  API and fails the release outright if the entry for that version is
+  missing, empty, or still sitting under `## Unreleased` (R07 — the trsdn
+  standard's decision 0010 gate, mandatory for every profile on that
+  broker, not just this one). `provenance.json` is uploaded as a release
+  asset, recording the source commit, tag, and signing identity, so a
+  consumer can verify where the artifact came from (R08). Verified live:
+  `xcrun stapler validate` and `spctl --assess` both accept the published
+  DMG as "Notarized Developer ID", and the R07 gate was tested against
+  `v1.2.0`'s real `CHANGELOG.md` entry before merging.
 
 ## Not applicable
 

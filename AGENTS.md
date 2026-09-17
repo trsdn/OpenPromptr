@@ -122,8 +122,11 @@ fallback for a non-git checkout.
 Distributable, signed and notarized builds come from
 `trsdn/macos-notarization-broker` (profile `openpromptr`), the same as
 sibling apps in this account. See `RELEASE_CHECKLIST.md` for the actual
-per-release steps. No release has been cut yet (tracked in issue #7).
-`build-app.sh` is a local convenience for development builds, signed with
+per-release steps. `v1.2.0` (2026-09-17) was the first one; release notes
+are extracted automatically from the `CHANGELOG.md` entry for the tag,
+and the broker refuses to publish if that entry is missing, empty, or
+still sitting under `[Unreleased]` — update the changelog before tagging,
+not after. `build-app.sh` is a local convenience for development builds, signed with
 whatever identity is available locally (falling back to ad-hoc with a
 warning); the broker assembles the app bundle itself via its own
 `assemble_openpromptr` build step, so `build-app.sh` is not necessarily the

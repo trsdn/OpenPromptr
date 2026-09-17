@@ -56,10 +56,10 @@ local decision. It requires a reviewed pull request against the broker's
    `OpenPromptr-<version>.dmg` — the last one is a copy of the DMG under the
    exact filename [AppUpdater](https://github.com/mxcl/AppUpdater) requires
    to find it. `--publish` uploads all three to the GitHub release for the
-   tag.
-7. Write the GitHub release notes from the `CHANGELOG.md` entry for this
-   version (the broker does not generate them automatically — this is a
-   manual step for now).
+   tag, with release notes extracted automatically from this repository's
+   `CHANGELOG.md` entry for `<version>` — which is exactly why step 1 has to
+   happen first. `--publish` refuses to create the release at all if that
+   entry is missing, empty, or still sitting under `[Unreleased]`.
 
 ## Local testing
 
