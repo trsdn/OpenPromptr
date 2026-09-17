@@ -59,6 +59,14 @@ mkdir -p -- "${APP_DIR}/Contents/MacOS" "${APP_DIR}/Contents/Resources"
 install -m 0755 "${EXECUTABLE}" "${APP_DIR}/Contents/MacOS/${PRODUCT_NAME}"
 install -m 0644 "${SCRIPT_DIR}/Config/Info.plist" "${APP_DIR}/Contents/Info.plist"
 
+# AppUpdater ships its TUF trust roots as a SwiftPM resource bundle next to the
+# built executable; without it in Contents/Resources the updater can't verify
+# a release at runtime, even for local dev builds.
+UPDATER_BUNDLE="${BIN_DIR}/AppUpdater_AppUpdater.bundle"
+if [[ -d "${UPDATER_BUNDLE}" ]]; then
+    cp -R "${UPDATER_BUNDLE}" "${APP_DIR}/Contents/Resources/"
+fi
+
 # The marketing version and build number come from the git tag/history rather
 # than being hand-typed in Config/Info.plist. Both fall back to whatever is
 # already in the plist when there's no tag to read (a tarball checkout, a

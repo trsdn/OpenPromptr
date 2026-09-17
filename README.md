@@ -32,9 +32,11 @@ created.
 OpenPromptr combines the earlier *Display Transformer* (display source) and
 *Teleprompter Mirror* (virtual source) in one program and adds Window mode.
 
-There are no third-party packages or permanently installed daemons. Only in
-**Virtual display** mode, a second instance of the same signed binary runs
-headless as a local display host while the app is running.
+There are no permanently installed daemons. Only in **Virtual display** mode,
+a second instance of the same signed binary runs headless as a local display
+host while the app is running. The only third-party code is
+[AppUpdater](https://github.com/mxcl/AppUpdater) (see "Checking for
+updates" below).
 
 ## The virtual source display
 
@@ -274,6 +276,29 @@ Disabling recovery during healthy output leaves that output running.
 Lifecycle logs record stop causes, error domains/codes, retry scheduling,
 cancellation, and results; potentially sensitive error text is private.
 
+## Checking for updates
+
+OpenPromptr checks GitHub Releases for this repository once a day (waking
+hourly, so a Mac that slept through a plain 24-hour timer doesn't miss a day)
+using [AppUpdater](https://github.com/mxcl/AppUpdater). A found update is
+downloaded and validated in the background — this is the only network access
+the app makes, and the only data involved is the request itself (no telemetry,
+no account, no identifying information sent beyond what a normal HTTPS request
+to GitHub implies). **Check for Updates Automatically** in the status menu or
+the app's Update menu turns this off; **Check for Updates…** always checks
+once regardless of that setting.
+
+Installing an update replaces the running app and relaunches it, so it is
+**never done automatically and never offered while output is running** — a
+teleprompter must not restart mid-talk. Stop output first, then install from
+the status menu or the Update menu.
+
+Only Developer ID-signed releases from this project's own signing identity are
+accepted; nothing else can be installed this way. Until a signed release
+exists (tracked in
+[issue #7](https://github.com/trsdn/OpenPromptr/issues/7)), a check simply
+finds nothing to install.
+
 ## Limitations
 
 - The app uses a **private, undocumented** CoreGraphics API for the virtual
@@ -329,3 +354,8 @@ The [Code of Conduct](CODE_OF_CONDUCT.md) applies to how we work together.
 ## License
 
 [MIT](LICENSE) — Copyright © 2026 Torsten Mahr.
+
+### Third-party components
+
+- [AppUpdater](https://github.com/mxcl/AppUpdater) 4.1.2 — Unlicense.
+- [Version](https://github.com/mxcl/Version) (AppUpdater's own dependency) — Apache-2.0.

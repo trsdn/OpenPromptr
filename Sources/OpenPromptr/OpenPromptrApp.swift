@@ -4,10 +4,15 @@ import SwiftUI
 @MainActor
 final class AppStatusItemController: NSObject, NSMenuDelegate {
     private weak var model: AppModel?
+    private weak var updates: UpdateManager?
     private var showControlsHandler: (() -> Void)?
     private let statusItem: NSStatusItem
     private let startItem: NSMenuItem
     private let stopItem: NSMenuItem
+    private let checkForUpdatesItem: NSMenuItem
+    private let automaticUpdatesItem: NSMenuItem
+    private let installUpdateItem: NSMenuItem
+    private let laterUpdateItem: NSMenuItem
 
     override init() {
         statusItem = NSStatusBar.system.statusItem(
@@ -22,6 +27,26 @@ final class AppStatusItemController: NSObject, NSMenuDelegate {
             title: "Stop Output",
             action: #selector(stopOutput),
             keyEquivalent: "."
+        )
+        checkForUpdatesItem = NSMenuItem(
+            title: "Check for Updates…",
+            action: #selector(checkForUpdates),
+            keyEquivalent: ""
+        )
+        automaticUpdatesItem = NSMenuItem(
+            title: "Check for Updates Automatically",
+            action: #selector(toggleAutomaticUpdates),
+            keyEquivalent: ""
+        )
+        installUpdateItem = NSMenuItem(
+            title: "Install Update and Restart…",
+            action: #selector(installUpdate),
+            keyEquivalent: ""
+        )
+        laterUpdateItem = NSMenuItem(
+            title: "Later",
+            action: #selector(dismissUpdate),
+            keyEquivalent: ""
         )
         super.init()
 
@@ -59,6 +84,18 @@ final class AppStatusItemController: NSObject, NSMenuDelegate {
         menu.addItem(aboutItem)
         menu.addItem(.separator())
 
+        installUpdateItem.target = self
+        installUpdateItem.isHidden = true
+        menu.addItem(installUpdateItem)
+        laterUpdateItem.target = self
+        laterUpdateItem.isHidden = true
+        menu.addItem(laterUpdateItem)
+        checkForUpdatesItem.target = self
+        menu.addItem(checkForUpdatesItem)
+        automaticUpdatesItem.target = self
+        menu.addItem(automaticUpdatesItem)
+        menu.addItem(.separator())
+
         let quitItem = NSMenuItem(
             title: "Quit OpenPromptr",
             action: #selector(quit),
@@ -72,15 +109,30 @@ final class AppStatusItemController: NSObject, NSMenuDelegate {
 
     func configure(
         model: AppModel,
+        updates: UpdateManager,
         showControls: @escaping () -> Void
     ) {
         self.model = model
+        self.updates = updates
         showControlsHandler = showControls
     }
 
     func menuWillOpen(_ menu: NSMenu) {
         startItem.isEnabled = model?.canStart == true
         stopItem.isEnabled = model?.canStop == true
+
+        automaticUpdatesItem.state = updates?.automaticChecksEnabled == true ? .on : .off
+        checkForUpdatesItem.isEnabled =
+            updates?.isBusy != true && updates?.hasPreparedUpdate != true
+
+        if case .readyToInstall(let version)? = updates?.state {
+            installUpdateItem.title = "Install Update \(version) and Restart…"
+            installUpdateItem.isHidden = false
+            laterUpdateItem.isHidden = false
+        } else {
+            installUpdateItem.isHidden = true
+            laterUpdateItem.isHidden = true
+        }
     }
 
     @objc
@@ -106,6 +158,30 @@ final class AppStatusItemController: NSObject, NSMenuDelegate {
     }
 
     @objc
+    private func checkForUpdates() {
+        guard let model, let updates else { return }
+        UpdateFlow.checkForUpdates(updates: updates, model: model)
+    }
+
+    @objc
+    private func toggleAutomaticUpdates() {
+        guard let updates else { return }
+        updates.automaticChecksEnabled.toggle()
+    }
+
+    @objc
+    private func installUpdate() {
+        guard let model, let updates else { return }
+        UpdateFlow.installUpdate(updates: updates, model: model)
+    }
+
+    @objc
+    private func dismissUpdate() {
+        guard let updates else { return }
+        UpdateFlow.dismissUpdate(updates: updates)
+    }
+
+    @objc
     private func quit() {
         NSApplication.shared.terminate(nil)
     }
@@ -120,12 +196,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func configure(
         model: AppModel,
+        updates: UpdateManager,
         showControls: @escaping () -> Void
     ) {
         self.model = model
         showControlsHandler = showControls
         statusItemController.configure(
             model: model,
+            updates: updates,
             showControls: showControls
         )
     }
@@ -185,6 +263,9 @@ struct OpenPromptrApp: App {
     @StateObject
     private var model = AppModel()
 
+    @StateObject
+    private var updates = UpdateManager()
+
     var body: some Scene {
         Window("OpenPromptr", id: "controls") {
             ControlRootView(
@@ -192,9 +273,11 @@ struct OpenPromptrApp: App {
                 configure: { showControls in
                     appDelegate.configure(
                         model: model,
+                        updates: updates,
                         showControls: showControls
                     )
                     model.appDidLaunch()
+                    updates.startAutomaticChecks()
                 }
             )
         }
@@ -204,6 +287,27 @@ struct OpenPromptrApp: App {
                 Button("About OpenPromptr") {
                     AboutPanel.show()
                 }
+            }
+
+            CommandMenu("Update") {
+                if case .readyToInstall(let version) = updates.state {
+                    Button("Install Update \(version) and Restart…") {
+                        UpdateFlow.installUpdate(updates: updates, model: model)
+                    }
+                    Button("Later") {
+                        UpdateFlow.dismissUpdate(updates: updates)
+                    }
+                }
+
+                Button("Check for Updates…") {
+                    UpdateFlow.checkForUpdates(updates: updates, model: model)
+                }
+                .disabled(updates.isBusy || updates.hasPreparedUpdate)
+
+                Toggle(
+                    "Check for Updates Automatically",
+                    isOn: $updates.automaticChecksEnabled
+                )
             }
 
             CommandMenu("Output") {
