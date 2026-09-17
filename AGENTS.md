@@ -84,6 +84,10 @@ open "dist/OpenPromptr.app" --args --self-test
   is still trying to restore the same session.
 - **Loosening `NSScreenCaptureUsageDescription`** or any other usage-
   description string in `Config/Info.plist`.
+- **Loosening the local API's security model**: binding anything but
+  `127.0.0.1`, dropping bearer-token auth, or accepting a request that
+  carries an `Origin` header. See `LocalAPIServer.swift`/`LocalAPI.swift`
+  and issue #4.
 
 ## Generated and machine-owned paths
 
@@ -138,8 +142,9 @@ Sources/
 │                        target can't mix Swift and Objective-C. ARC.
 └── OpenPromptr/         App wiring: SwiftUI views, AppModel, capture
                          pipeline, display catalog, the virtual-display-host
-                         process, main.swift's dispatch between the two, and
-                         Update/ (AppUpdater integration, see #7).
+                         process, main.swift's dispatch between the two,
+                         Update/ (AppUpdater integration, see #7), and
+                         LocalAPI/ (the loopback HTTP control API, see #4).
 ```
 
 Three source types feed one output pipeline: a private virtual display, a
@@ -175,6 +180,16 @@ display aren't reliably delivered to the process that created it).
 - **A manual Stop always wins.** It suppresses automatic recovery and
   automatic restart-on-reconnect for the rest of the app session; only an
   explicit Start lifts that suppression.
+- **A closure written inside a `@MainActor` type inherits that isolation
+  implicitly, even with no annotation on the closure itself.** `LocalAPIServer`
+  hands its route/middleware closures to Swifter, which calls them on its own
+  background queue — measured as a `SIGTRAP` in `dispatch_assert_queue` the
+  first time this was tried with the class marked `@MainActor`, since the
+  compiler let it through silently and only the runtime's dynamic isolation
+  check caught it. That's why `LocalAPIServer` is deliberately *not*
+  `@MainActor`: every actual touch of `AppModel`'s state goes through an
+  explicit hop instead (`runOnMainActorSync` for reads, `Task { @MainActor
+  in ... }` for actions).
 
 ## Repository quality standard
 

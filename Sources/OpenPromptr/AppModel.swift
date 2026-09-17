@@ -89,6 +89,7 @@ final class AppModel: ObservableObject {
     @Published private(set) var transform: DisplayTransform
     @Published private(set) var autoStartOutput: Bool
     @Published private(set) var autoResumeOutput: Bool
+    @Published private(set) var enableLocalAPI: Bool
     @Published private(set) var isRunning = false
     @Published private(set) var isBusy = false
     @Published private(set) var isRefreshingWindows = false
@@ -127,6 +128,7 @@ final class AppModel: ObservableObject {
     /// host only runs while the virtual display is actually the source.
     private var virtualDisplayHost: VirtualDisplayHostProcess?
     private var virtualDisplayID: CGDirectDisplayID?
+    private var localAPIServer: LocalAPIServer?
     private var workingSource: CaptureSourceSelection
     private var workingTargetIdentity: PersistentDisplayIdentity?
     private var lifecycle: Lifecycle = .idle
@@ -159,6 +161,7 @@ final class AppModel: ObservableObject {
         settings = loaded
         autoStartOutput = loaded.autoStartOutput
         autoResumeOutput = loaded.autoResumeOutput
+        enableLocalAPI = loaded.enableLocalAPI
 
         let configuration = loaded.configuration
         workingSource = configuration.source
@@ -283,6 +286,9 @@ final class AppModel: ObservableObject {
         refreshLoginItemStatus()
         if sourceKind == .window {
             refreshWindows()
+        }
+        if enableLocalAPI {
+            startLocalAPIServer()
         }
 
         if isSelfTest {
@@ -488,6 +494,35 @@ final class AppModel: ObservableObject {
                 stopMessage: "Automatic output was disabled."
             )
         }
+    }
+
+    /// See issue #4: a loopback-only HTTP API so an external tool (a script,
+    /// a Stream Deck plugin) can start/stop output and read status without
+    /// going through the menu bar.
+    func setEnableLocalAPI(_ enabled: Bool) {
+        enableLocalAPI = enabled
+        settings.enableLocalAPI = enabled
+        persistSettings()
+
+        if enabled {
+            startLocalAPIServer()
+        } else {
+            stopLocalAPIServer()
+        }
+    }
+
+    private func startLocalAPIServer() {
+        guard localAPIServer == nil else {
+            return
+        }
+        let server = LocalAPIServer(model: self)
+        server.start()
+        localAPIServer = server
+    }
+
+    private func stopLocalAPIServer() {
+        localAPIServer?.stop()
+        localAPIServer = nil
     }
 
     func refreshDisplays() {
@@ -698,6 +733,7 @@ final class AppModel: ObservableObject {
     }
 
     func shutdown() async {
+        stopLocalAPIServer()
         cancelRecovery(resetBudget: true)
         displayChangeTask?.cancel()
         windowRefreshTask?.cancel()
@@ -796,6 +832,7 @@ final class AppModel: ObservableObject {
     }
 
     func prepareForTermination() {
+        stopLocalAPIServer()
         cancelRecovery(resetBudget: true)
         outputController?.close()
         startingOutputController?.close()

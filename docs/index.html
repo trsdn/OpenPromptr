@@ -157,9 +157,12 @@
         <p class="iw-body--compact">
           Captured images are processed locally and shown on a display only,
           with no telemetry and no storage of image content on disk. The only
-          network access is a daily check against this repository's GitHub
-          Releases (can be turned off), used solely to offer app updates.
-          Settings are kept in the app's own
+          outbound network access is a daily check against this repository's
+          GitHub Releases (can be turned off), used solely to offer app
+          updates. An optional, off-by-default local API (127.0.0.1 only,
+          token-authenticated) lets a script or a Stream Deck control output
+          from outside the app — never reachable from the network. Settings
+          are kept in the app's own
           <code class="iw-code">UserDefaults</code> domain. Full detail is in
           the
           <a href="https://github.com/trsdn/OpenPromptr/blob/main/SECURITY.md#security-relevant-context">security policy</a>.

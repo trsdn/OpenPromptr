@@ -583,17 +583,20 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var configuration: TeleprompterConfiguration
     public var autoStartOutput: Bool
     public var autoResumeOutput: Bool
+    public var enableLocalAPI: Bool
 
     public init(
         schemaVersion: Int = currentSchemaVersion,
         configuration: TeleprompterConfiguration = .init(),
         autoStartOutput: Bool = false,
-        autoResumeOutput: Bool = false
+        autoResumeOutput: Bool = false,
+        enableLocalAPI: Bool = false
     ) {
         self.schemaVersion = schemaVersion
         self.configuration = configuration
         self.autoStartOutput = autoStartOutput
         self.autoResumeOutput = autoResumeOutput
+        self.enableLocalAPI = enableLocalAPI
     }
 
     public static var defaults: AppSettings {
@@ -607,6 +610,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         case presets
         case autoStartOutput
         case autoResumeOutput
+        case enableLocalAPI
     }
 
     public init(from decoder: Decoder) throws {
@@ -625,6 +629,11 @@ public struct AppSettings: Codable, Equatable, Sendable {
             try container.decodeIfPresent(
                 Bool.self,
                 forKey: .autoResumeOutput
+            ) ?? false
+        enableLocalAPI =
+            try container.decodeIfPresent(
+                Bool.self,
+                forKey: .enableLocalAPI
             ) ?? false
 
         if let configuration = try container.decodeIfPresent(
@@ -660,6 +669,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         try container.encode(configuration, forKey: .configuration)
         try container.encode(autoStartOutput, forKey: .autoStartOutput)
         try container.encode(autoResumeOutput, forKey: .autoResumeOutput)
+        try container.encode(enableLocalAPI, forKey: .enableLocalAPI)
     }
 
     public func normalized() -> AppSettings {

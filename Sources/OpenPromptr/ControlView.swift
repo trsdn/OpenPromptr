@@ -124,6 +124,7 @@ struct ControlView: View {
             targetSection
             orientationSection
             startupSection
+            remoteControlSection
             statusSection
             actionBar
         }
@@ -388,6 +389,34 @@ struct ControlView: View {
                 }
             }
             .toggleStyle(.checkbox)
+        }
+    }
+
+    private var remoteControlSection: some View {
+        ControlSection(title: "Remote control", systemImage: "network") {
+            VStack(alignment: .leading, spacing: 6) {
+                Toggle(
+                    "Enable local HTTP API",
+                    isOn: Binding(
+                        get: { model.enableLocalAPI },
+                        set: { model.setEnableLocalAPI($0) }
+                    )
+                )
+                .toggleStyle(.checkbox)
+
+                Text(
+                    "Lets a script or a Stream Deck plugin start/stop output and read status. Listens on 127.0.0.1 only and requires a token; never reachable from the network."
+                )
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+
+                if model.enableLocalAPI {
+                    Button("Reveal Connection Info in Finder") {
+                        LocalAPICredentials.revealInFinder()
+                    }
+                    .controlSize(.small)
+                }
+            }
         }
     }
 
