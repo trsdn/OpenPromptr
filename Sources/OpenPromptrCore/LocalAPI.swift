@@ -110,11 +110,18 @@ public enum LocalAPIAuth {
         }
         let providedBytes = Array(provided.utf8)
         let expectedBytes = Array(expected.utf8)
-        var difference = UInt8(providedBytes.count ^ expectedBytes.count)
-        for index in 0..<max(providedBytes.count, expectedBytes.count) {
-            let providedByte = index < providedBytes.count ? providedBytes[index] : 0
-            let expectedByte = index < expectedBytes.count ? expectedBytes[index] : 0
-            difference |= providedByte ^ expectedByte
+        // A length mismatch returns immediately: the token is always a fixed
+        // 64-character hex string, so length was never the secret part, and
+        // comparing it first avoids folding two counts (which can each be
+        // arbitrarily large, e.g. a long garbage bearer token) into a single
+        // `UInt8` — that used to overflow and crash the app instead of just
+        // rejecting the request.
+        guard providedBytes.count == expectedBytes.count else {
+            return false
+        }
+        var difference: UInt8 = 0
+        for index in 0..<expectedBytes.count {
+            difference |= providedBytes[index] ^ expectedBytes[index]
         }
         return difference == 0
     }

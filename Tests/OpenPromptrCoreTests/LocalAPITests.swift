@@ -41,6 +41,17 @@ func tokenMatchesExactly() {
     #expect(!LocalAPIAuth.tokenMatches(provided: nil, expected: "secret"))
 }
 
+@Test("A long garbage token is rejected rather than crashing the comparison")
+func tokenMatchesRejectsOversizedGarbageWithoutTrapping() {
+    // Regression test: an earlier implementation folded the two byte counts
+    // into a single UInt8 via XOR, which traps once that XOR exceeds 255 —
+    // a real (short, 6-char) token against a long garbage bearer value hit
+    // this exactly, crashing the app on a single unauthenticated request.
+    let expected = String(repeating: "a", count: 64)
+    let garbage = String(repeating: "x", count: 4096)
+    #expect(!LocalAPIAuth.tokenMatches(provided: garbage, expected: expected))
+}
+
 @Test("A request is rejected for carrying any Origin header, regardless of case or value")
 func originHeaderIsRejectedRegardlessOfValue() {
     #expect(LocalAPIAuth.isOriginRejected(headers: ["Origin": "http://example.com"]))
