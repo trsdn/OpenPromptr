@@ -69,12 +69,16 @@ open "dist/OpenPromptr.app" --args --self-test
   checks, topics, or security features. These are recorded in
   `.github/conformance.yml`, so changing one silently makes that record wrong.
 - **Publishing a release, or triggering the notarization broker.**
-- **Adding a third-party dependency.** `Package.swift` has none by design
-  (see `README.md`); the app links only system frameworks.
-- **Adding anything that opens a network connection.** The app makes none —
-  `SECURITY.md` states this as a guarantee to the user, and the only
-  inter-process communication is the local, unnamed pipe between the main
-  process and its own headless virtual-display-host instance.
+- **Adding another third-party dependency.** `AppUpdater` (pinned exact,
+  `Package.resolved` committed) is the only one, added deliberately for #7;
+  the app otherwise links only system frameworks.
+- **Adding a network connection beyond AppUpdater's GitHub Releases check.**
+  `SECURITY.md` and the README's "Checking for updates" section state that
+  check as the app's only network access; the only other inter-process
+  communication is the local, unnamed pipe between the main process and its
+  own headless virtual-display-host instance.
+- **Making an update install automatic, or offering it while `AppModel.isRunning`
+  is true.** A teleprompter must not restart mid-talk — see `UpdateFlow.swift`.
 - **Loosening `NSScreenCaptureUsageDescription`** or any other usage-
   description string in `Config/Info.plist`.
 
@@ -110,11 +114,15 @@ fallback for a non-git checkout.
 
 Distributable, signed and notarized builds are meant to come from
 `trsdn/macos-notarization-broker`, the same as sibling apps in this account.
-As of this writing that broker's profile for this app is still stale (tracked
-in issue #7) — there is no automated release path yet. `build-app.sh` is a
-local convenience for development builds, signed with whatever identity is
-available locally (falling back to ad-hoc with a warning); it is not
-necessarily the definition of what a broker-built release bundle looks like.
+As of this writing the broker's `openpromptr` profile is proposed but not yet
+merged (trsdn/macos-notarization-broker#49, tracked in issue #7) — there is
+no automated release path yet. `build-app.sh` is a local convenience for
+development builds, signed with whatever identity is available locally
+(falling back to ad-hoc with a warning); the broker assembles the app bundle
+itself via its own `assemble_openpromptr` build step, so `build-app.sh` is
+not necessarily the definition of what a broker-built release bundle looks
+like — keep the two in sync deliberately, not by assumption, if one changes
+(bundle layout, Info.plist location, resource bundles).
 
 ## Architecture
 
@@ -127,7 +135,8 @@ Sources/
 │                        target can't mix Swift and Objective-C. ARC.
 └── OpenPromptr/         App wiring: SwiftUI views, AppModel, capture
                          pipeline, display catalog, the virtual-display-host
-                         process, main.swift's dispatch between the two.
+                         process, main.swift's dispatch between the two, and
+                         Update/ (AppUpdater integration, see #7).
 ```
 
 Three source types feed one output pipeline: a private virtual display, a

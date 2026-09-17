@@ -25,8 +25,12 @@ You will usually receive a response within seven days.
 The following architecture is relevant for evaluating reports:
 
 - The app requires **Screen Recording** permission. Captured images are processed
-  exclusively locally and displayed on a display. There is no network
-  communication, no telemetry, and no storage of image content on disk.
+  exclusively locally and displayed on a display; there is no telemetry and no
+  storage of image content on disk.
+- The only network access is an update check against this repository's GitHub
+  Releases, via [AppUpdater](https://github.com/mxcl/AppUpdater). See
+  "Checking for updates" in `README.md`. It can be turned off; the app makes
+  no other network connection.
 - In **Virtual display** mode, the app starts a second instance of the same
   signed binary as a headless display host. Only its own bundle path is started;
   no external programs are executed.

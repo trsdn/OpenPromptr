@@ -113,8 +113,8 @@
         <p class="iw-body--compact">
           Distributable, notarized builds are in progress (tracked in
           <a href="https://github.com/trsdn/OpenPromptr/issues/7">issue #7</a>).
-          For now, build it yourself — the app is a small SwiftPM project
-          with no third-party dependencies.
+          For now, build it yourself — the app is a small SwiftPM project.
+          Once a release exists, the app checks for updates itself.
         </p>
       </div>
 
@@ -155,9 +155,11 @@
       <div class="iw-callout iw-callout--success">
         <p class="iw-callout-title">OpenPromptr collects nothing and sends nothing</p>
         <p class="iw-body--compact">
-          Captured images are processed locally and shown on a display only.
-          There is no network communication, no telemetry, and no storage of
-          image content on disk. Settings are kept in the app's own
+          Captured images are processed locally and shown on a display only,
+          with no telemetry and no storage of image content on disk. The only
+          network access is a daily check against this repository's GitHub
+          Releases (can be turned off), used solely to offer app updates.
+          Settings are kept in the app's own
           <code class="iw-code">UserDefaults</code> domain. Full detail is in
           the
           <a href="https://github.com/trsdn/OpenPromptr/blob/main/SECURITY.md#security-relevant-context">security policy</a>.
