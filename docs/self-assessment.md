@@ -45,14 +45,23 @@ Archived (the repository is active).
 
 ## Fail (tracked, not fixed here)
 
-- **R03–R08** — no release automation. Tags exist (`v1.0.0`, `v1.0.1`,
-  `v1.1.0`) but there are no GitHub Releases, no release notes, and no
-  automated signed/notarized artifact build. The signing side of this lives
-  in the separate `trsdn/macos-notarization-broker` repository, whose profile
-  for this app is still stale. Tracked in
-  [issue #7](https://github.com/trsdn/OpenPromptr/issues/7); out of scope for
-  this assessment pass because it needs a reviewed change in that other repo
-  plus Apple Developer credentials this assessment has no access to.
+- **R07** — release notes are written from the CHANGELOG entry by hand
+  (`RELEASE_CHECKLIST.md` step 7); nothing yet fails the release when that
+  entry is missing, empty, or still sitting in `[Unreleased]`.
+
+## Resolved since the last pass
+
+- **R03–R08** — `v1.2.0` (2026-09-17) is a real, signed, notarized release:
+  `trsdn/macos-notarization-broker`'s `openpromptr` profile now builds the
+  correct source (#49, #50) and produces `OpenPromptr-v{version}-macOS-arm64.{zip,dmg}`
+  plus the AppUpdater-required `OpenPromptr-{version}.dmg` copy (R03, R04).
+  The broker's own preflight/`validate_app_tree` smoke-tests the bundle
+  before signing (R05). Release notes come from the CHANGELOG entry (R06,
+  though not yet automated — see R07 above). `provenance.json` is uploaded
+  as a release asset, recording the source commit, tag, and signing
+  identity, so a consumer can verify where the artifact came from (R08).
+  Verified live: `xcrun stapler validate` and `spctl --assess` both accept
+  the published DMG as "Notarized Developer ID".
 
 ## Not applicable
 

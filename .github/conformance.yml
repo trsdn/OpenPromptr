@@ -58,12 +58,12 @@ criteria:
   D06: na
   R01: partial
   R02: partial
-  R03: fail
-  R04: fail
-  R05: fail
-  R06: fail
+  R03: pass
+  R04: pass
+  R05: pass
+  R06: pass
   R07: fail
-  R08: fail
+  R08: pass
   I01: pass
   I02: pass
   I03: partial
