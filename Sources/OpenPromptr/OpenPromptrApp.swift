@@ -12,6 +12,7 @@ final class AppStatusItemController: NSObject, NSMenuDelegate {
     private let checkForUpdatesItem: NSMenuItem
     private let automaticUpdatesItem: NSMenuItem
     private let installUpdateItem: NSMenuItem
+    private let laterUpdateItem: NSMenuItem
 
     override init() {
         statusItem = NSStatusBar.system.statusItem(
@@ -40,6 +41,11 @@ final class AppStatusItemController: NSObject, NSMenuDelegate {
         installUpdateItem = NSMenuItem(
             title: "Install Update and Restart…",
             action: #selector(installUpdate),
+            keyEquivalent: ""
+        )
+        laterUpdateItem = NSMenuItem(
+            title: "Later",
+            action: #selector(dismissUpdate),
             keyEquivalent: ""
         )
         super.init()
@@ -81,6 +87,9 @@ final class AppStatusItemController: NSObject, NSMenuDelegate {
         installUpdateItem.target = self
         installUpdateItem.isHidden = true
         menu.addItem(installUpdateItem)
+        laterUpdateItem.target = self
+        laterUpdateItem.isHidden = true
+        menu.addItem(laterUpdateItem)
         checkForUpdatesItem.target = self
         menu.addItem(checkForUpdatesItem)
         automaticUpdatesItem.target = self
@@ -113,13 +122,16 @@ final class AppStatusItemController: NSObject, NSMenuDelegate {
         stopItem.isEnabled = model?.canStop == true
 
         automaticUpdatesItem.state = updates?.automaticChecksEnabled == true ? .on : .off
-        checkForUpdatesItem.isEnabled = updates?.isBusy != true
+        checkForUpdatesItem.isEnabled =
+            updates?.isBusy != true && updates?.hasPreparedUpdate != true
 
         if case .readyToInstall(let version)? = updates?.state {
             installUpdateItem.title = "Install Update \(version) and Restart…"
             installUpdateItem.isHidden = false
+            laterUpdateItem.isHidden = false
         } else {
             installUpdateItem.isHidden = true
+            laterUpdateItem.isHidden = true
         }
     }
 
@@ -161,6 +173,12 @@ final class AppStatusItemController: NSObject, NSMenuDelegate {
     private func installUpdate() {
         guard let model, let updates else { return }
         UpdateFlow.installUpdate(updates: updates, model: model)
+    }
+
+    @objc
+    private func dismissUpdate() {
+        guard let updates else { return }
+        UpdateFlow.dismissUpdate(updates: updates)
     }
 
     @objc
@@ -276,12 +294,15 @@ struct OpenPromptrApp: App {
                     Button("Install Update \(version) and Restart…") {
                         UpdateFlow.installUpdate(updates: updates, model: model)
                     }
+                    Button("Later") {
+                        UpdateFlow.dismissUpdate(updates: updates)
+                    }
                 }
 
                 Button("Check for Updates…") {
                     UpdateFlow.checkForUpdates(updates: updates, model: model)
                 }
-                .disabled(updates.isBusy)
+                .disabled(updates.isBusy || updates.hasPreparedUpdate)
 
                 Toggle(
                     "Check for Updates Automatically",

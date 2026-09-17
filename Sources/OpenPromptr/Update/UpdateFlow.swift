@@ -25,9 +25,13 @@ enum UpdateFlow {
     }
 
     /// Only ever called from an explicit menu action — never automatically, and never
-    /// while `model.isRunning`, so a teleprompter session is never interrupted mid-talk.
+    /// while `model.canStop` (a session is running, desired, or in the middle of starting,
+    /// stopping, or automatic recovery), so a teleprompter session is never interrupted
+    /// mid-talk. `isRunning` alone is not enough: it goes false the instant a capture
+    /// failure starts an automatic-recovery retry, even though that retry is still trying
+    /// to restore the same session.
     static func installUpdate(updates: UpdateManager, model: AppModel) {
-        guard !model.isRunning else {
+        guard !model.canStop else {
             presentResult(
                 title: "Stop output before installing",
                 message:
@@ -44,20 +48,33 @@ enum UpdateFlow {
         }
     }
 
+    /// Discards a downloaded update without installing it. The next check finds it again.
+    static func dismissUpdate(updates: UpdateManager) {
+        Task {
+            await updates.dismiss()
+        }
+    }
+
     private static func offerInstall(version: String, updates: UpdateManager, model: AppModel) {
         NSApp.activate(ignoringOtherApps: true)
+        let sessionActive = model.canStop
         let alert = NSAlert()
         alert.messageText = "OpenPromptr \(version) is ready to install"
         alert.informativeText =
-            model.isRunning
+            sessionActive
             ? "OpenPromptr quits and reopens to install this update, so it can't be installed while output is running. Stop output first, then install from the menu."
             : "OpenPromptr quits, updates itself, and opens again."
-        alert.addButton(withTitle: model.isRunning ? "OK" : "Install and Restart")
-        if !model.isRunning {
+        alert.addButton(withTitle: sessionActive ? "OK" : "Install and Restart")
+        if !sessionActive {
             alert.addButton(withTitle: "Later")
         }
-        if alert.runModal() == .alertFirstButtonReturn && !model.isRunning {
+        switch alert.runModal() {
+        case .alertFirstButtonReturn where !sessionActive:
             installUpdate(updates: updates, model: model)
+        case .alertSecondButtonReturn where !sessionActive:
+            dismissUpdate(updates: updates)
+        default:
+            break
         }
     }
 

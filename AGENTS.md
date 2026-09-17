@@ -77,8 +77,11 @@ open "dist/OpenPromptr.app" --args --self-test
   check as the app's only network access; the only other inter-process
   communication is the local, unnamed pipe between the main process and its
   own headless virtual-display-host instance.
-- **Making an update install automatic, or offering it while `AppModel.isRunning`
+- **Making an update install automatic, or allowing it while `AppModel.canStop`
   is true.** A teleprompter must not restart mid-talk — see `UpdateFlow.swift`.
+  Gate on `canStop`, not `isRunning`: `isRunning` goes false the instant a
+  capture failure starts an automatic-recovery retry, even though that retry
+  is still trying to restore the same session.
 - **Loosening `NSScreenCaptureUsageDescription`** or any other usage-
   description string in `Config/Info.plist`.
 
