@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>OpenPromptr — Native macOS Teleprompter Mirror</title>
+<meta name="description" content="A standalone native macOS app that mirrors a display, a window, or a private virtual display onto a physical teleprompter monitor, with rotation and mirroring built in.">
+<meta name="author" content="trsdn">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://trsdn.github.io/OpenPromptr/">
+
+<link rel="icon" type="image/png" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
+
+<!--
+  Instrument Workshop, vendored from trsdn/design-system v1.5.1.
+  See assets/VENDORED.md for the version record and the re-vendoring procedure.
+
+  Every resource on this page is served from this repository. There are no
+  third-party requests, no cookies, and no analytics.
+-->
+<link rel="stylesheet" href="assets/instrument-workshop-fonts.css">
+<link rel="stylesheet" href="assets/core.tokens.css">
+<link rel="stylesheet" href="assets/instrument-workshop.css">
+</head>
+
+<body class="iw-root">
+
+<a class="iw-skip-link" href="#main">Skip to content</a>
+
+<div class="iw-page">
+
+  <header class="iw-page-header">
+    <div>
+      <p class="iw-eyebrow">Open source · native macOS app</p>
+      <h1 class="iw-page-title">
+        <img src="icon.png" alt="" width="40" height="40" style="vertical-align:-8px;margin-right:8px">
+        OpenPromptr
+      </h1>
+      <p class="iw-body">
+        OpenPromptr mirrors a display, a window, or a private virtual display
+        onto a physical teleprompter monitor — rotated and mirrored so it
+        reads correctly through a mirror-glass rig.
+      </p>
+      <p class="iw-row" style="margin-top:12px;flex-wrap:wrap;gap:8px">
+        <span class="iw-status" data-state="active">Maintained</span>
+        <span class="iw-badge iw-badge--identity">Version <span data-app-version>1.1.0</span></span>
+        <span class="iw-badge">macOS 13+</span>
+        <span class="iw-badge">MIT</span>
+      </p>
+    </div>
+    <a class="iw-button iw-button--primary" href="https://github.com/trsdn/OpenPromptr#building-and-testing">
+      Build from source
+    </a>
+  </header>
+
+  <main id="main">
+
+    <!-- WHAT IT DOES -->
+    <section class="iw-section" aria-labelledby="what">
+      <h2 class="iw-section-title" id="what">What it does</h2>
+      <p class="iw-body">
+        A teleprompter or mirror-glass rig needs one thing: whatever is on
+        the presenter-view window, mirrored and correctly oriented, on a
+        second physical display. OpenPromptr captures a source with
+        ScreenCaptureKit, applies rotation and mirroring, and shows the
+        result full-screen on the target display — nothing else runs, and
+        unused screen area stays black.
+      </p>
+
+      <div class="iw-cardgrid">
+        <article class="iw-card">
+          <h3 class="iw-card-fact">Three source types</h3>
+          <p class="iw-body--compact">
+            A single window (simplest — everything stays usable), a visible
+            physical display, or a private virtual display for when the
+            presenter view shouldn't appear anywhere else.
+          </p>
+        </article>
+        <article class="iw-card">
+          <h3 class="iw-card-fact">Rotation and mirroring</h3>
+          <p class="iw-body--compact">
+            0°/90°/180°/270° rotation plus independent horizontal and
+            vertical mirroring, with a live preview of the result.
+          </p>
+        </article>
+        <article class="iw-card">
+          <h3 class="iw-card-fact">No feedback loop</h3>
+          <p class="iw-body--compact">
+            Source and target are always separate displays, so the
+            full-screen output never covers the thing being captured.
+          </p>
+        </article>
+        <article class="iw-card">
+          <h3 class="iw-card-fact">Automatic recovery</h3>
+          <p class="iw-body--compact">
+            Optional automatic retry after a capture or rendering failure,
+            and automatic resume when a disconnected display reappears.
+          </p>
+        </article>
+      </div>
+    </section>
+
+    <hr class="iw-rule">
+
+    <!-- HOW TO GET IT -->
+    <section class="iw-section" aria-labelledby="get">
+      <h2 class="iw-section-title" id="get">How to get it</h2>
+
+      <div class="iw-callout iw-callout--warning">
+        <p class="iw-callout-title">No signed release yet</p>
+        <p class="iw-body--compact">
+          Distributable, notarized builds are in progress (tracked in
+          <a href="https://github.com/trsdn/OpenPromptr/issues/7">issue #7</a>).
+          For now, build it yourself — the app is a small SwiftPM project
+          with no third-party dependencies.
+        </p>
+      </div>
+
+      <ol class="iw-steps" style="margin-top:20px">
+        <li data-step="1">
+          <strong>Clone and build.</strong>
+          <code class="iw-code">git clone https://github.com/trsdn/OpenPromptr.git
+&amp;&amp; cd OpenPromptr &amp;&amp; ./build-app.sh</code>
+          creates <code class="iw-code">dist/OpenPromptr.app</code>. Full steps
+          are in the
+          <a href="https://github.com/trsdn/OpenPromptr#building-and-testing">README</a>.
+        </li>
+        <li data-step="2">
+          <strong>Grant Screen Recording permission.</strong>
+          Under System Settings → Privacy &amp; Security → Screen Recording,
+          for the built app bundle.
+        </li>
+        <li data-step="3">
+          <strong>Choose a source and a target display,</strong> then start
+          output — see
+          <a href="https://github.com/trsdn/OpenPromptr#operation">Operation</a>
+          in the README.
+        </li>
+      </ol>
+
+      <p class="iw-body" style="margin-top:20px">
+        See the
+        <a href="https://github.com/trsdn/OpenPromptr/blob/main/CHANGELOG.md">changelog</a>
+        for release history.
+      </p>
+    </section>
+
+    <hr class="iw-rule">
+
+    <!-- PRIVACY -->
+    <section class="iw-section" aria-labelledby="privacy">
+      <h2 class="iw-section-title" id="privacy">Privacy</h2>
+      <div class="iw-callout iw-callout--success">
+        <p class="iw-callout-title">OpenPromptr collects nothing and sends nothing</p>
+        <p class="iw-body--compact">
+          Captured images are processed locally and shown on a display only.
+          There is no network communication, no telemetry, and no storage of
+          image content on disk. Settings are kept in the app's own
+          <code class="iw-code">UserDefaults</code> domain. Full detail is in
+          the
+          <a href="https://github.com/trsdn/OpenPromptr/blob/main/SECURITY.md#security-relevant-context">security policy</a>.
+        </p>
+      </div>
+      <p class="iw-body" style="margin-top:16px">
+        This page behaves the same way. Every stylesheet, font, and image is
+        served from this repository, so nothing here loads from a third
+        party, sets a cookie, or records your visit.
+      </p>
+    </section>
+
+    <hr class="iw-rule">
+
+    <!-- ACCESSIBILITY -->
+    <section class="iw-section" aria-labelledby="a11y">
+      <h2 class="iw-section-title" id="a11y">Accessibility</h2>
+      <p class="iw-body">
+        Every control is a standard SwiftUI button, toggle, or picker, with
+        standard keyboard focus and an accessibility label. This has not been
+        tested end-to-end with VoiceOver. Full detail is in the
+        <a href="https://github.com/trsdn/OpenPromptr#accessibility">README's
+        accessibility note</a>.
+      </p>
+    </section>
+
+  </main>
+
+  <hr class="iw-rule">
+
+  <footer class="iw-section">
+    <h2 class="iw-section-title">Project</h2>
+    <ul class="iw-index-list">
+      <li><a href="https://github.com/trsdn/OpenPromptr">Source repository</a></li>
+      <li><a href="https://github.com/trsdn/OpenPromptr/blob/main/LICENSE">Licence — MIT</a></li>
+      <li><a href="https://github.com/trsdn/OpenPromptr/blob/main/SECURITY.md">Security policy</a></li>
+      <li><a href="https://github.com/trsdn/OpenPromptr/security/advisories/new">Report a vulnerability privately</a></li>
+      <li><a href="https://github.com/trsdn/.github/blob/main/SUPPORT.md">Support</a></li>
+      <li><a href="https://github.com/trsdn/OpenPromptr/blob/main/CONTRIBUTING.md">Contributing</a></li>
+      <li><a href="https://github.com/trsdn/OpenPromptr/issues">Issue tracker</a></li>
+      <li><a href="https://github.com/trsdn/OpenPromptr/blob/main/CHANGELOG.md">Changelog</a></li>
+    </ul>
+
+    <p class="iw-caption" style="margin-top:24px">
+      Describes version <span data-app-version>1.1.0</span>. Page last reviewed
+      <time datetime="2026-09-17" data-reviewed>17 September 2026</time>.
+      Built with Instrument Workshop v1.5.1.
+    </p>
+  </footer>
+
+</div>
+
+</body>
+</html>
