@@ -170,6 +170,7 @@ struct ControlView: View {
                 }
             }
             .labelsHidden()
+            .accessibilityLabel("Source")
             .pickerStyle(.segmented)
             .disabled(model.isBusy)
 
@@ -204,6 +205,7 @@ struct ControlView: View {
                     }
                 }
                 .labelsHidden()
+                .accessibilityLabel("Source display")
                 .pickerStyle(.menu)
                 .disabled(model.isRunning || model.isBusy)
 
@@ -221,6 +223,7 @@ struct ControlView: View {
                         }
                     }
                     .labelsHidden()
+                    .accessibilityLabel("Source window")
                     .pickerStyle(.menu)
                     .disabled(model.isRunning || model.isBusy)
 
@@ -231,6 +234,7 @@ struct ControlView: View {
                     }
                     .disabled(model.isRefreshingWindows)
                     .help("Refresh window list")
+                    .accessibilityLabel("Refresh window list")
 
                     if model.isRefreshingWindows {
                         ProgressView()
@@ -258,6 +262,7 @@ struct ControlView: View {
                 }
             }
             .labelsHidden()
+            .accessibilityLabel("Target display")
             .pickerStyle(.menu)
             .frame(maxWidth: .infinity, alignment: .leading)
             .disabled(model.isRunning || model.isBusy)
@@ -291,6 +296,7 @@ struct ControlView: View {
                         }
                     }
                     .labelsHidden()
+                    .accessibilityLabel("Rotation")
                     .pickerStyle(.segmented)
 
                     HStack(spacing: 16) {
@@ -357,11 +363,21 @@ struct ControlView: View {
                     }
                 }
 
-                Text(model.loginItemStatusText)
-                    .font(.caption2)
-                    .foregroundStyle(
-                        model.loginItemStatusIsError ? .red : .secondary
+                Label {
+                    Text(model.loginItemStatusText)
+                        .font(.caption2)
+                        .foregroundStyle(
+                            model.loginItemStatusIsError ? .red : .secondary
+                        )
+                } icon: {
+                    Image(
+                        systemName: model.loginItemStatusIsError
+                            ? "exclamationmark.circle.fill"
+                            : "info.circle.fill"
                     )
+                    .font(.caption2)
+                    .foregroundStyle(model.loginItemStatusIsError ? .red : .secondary)
+                }
 
                 if !model.appIsInApplicationsFolder {
                     Text(
