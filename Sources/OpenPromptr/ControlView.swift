@@ -4,7 +4,7 @@ import SwiftUI
 
 /// A titled block of related controls. Keeps the window scannable without
 /// relying on the heavier platform `GroupBox` chrome.
-private struct ControlSection<Content: View>: View {
+struct ControlSection<Content: View>: View {
     let title: String
     let systemImage: String
     @ViewBuilder var content: Content
@@ -123,8 +123,6 @@ struct ControlView: View {
             sourceSection
             targetSection
             orientationSection
-            startupSection
-            remoteControlSection
             statusSection
             actionBar
         }
@@ -321,105 +319,6 @@ struct ControlView: View {
         }
     }
 
-    private var startupSection: some View {
-        ControlSection(title: "Startup and recovery", systemImage: "power") {
-            VStack(alignment: .leading, spacing: 6) {
-                Toggle(
-                    "Start output automatically when the app launches",
-                    isOn: Binding(
-                        get: { model.autoStartOutput },
-                        set: { model.setAutoStartOutput($0) }
-                    )
-                )
-
-                Toggle(
-                    "Automatically resume output after an interruption",
-                    isOn: Binding(
-                        get: { model.autoResumeOutput },
-                        set: { model.setAutoResumeOutput($0) }
-                    )
-                )
-                Text("Retries after 2, 5 and 15 seconds. Stop always cancels automatic recovery.")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-
-                HStack {
-                    Toggle(
-                        "Launch at login",
-                        isOn: Binding(
-                            get: { model.loginItemEnabled },
-                            set: { model.setLoginItemEnabled($0) }
-                        )
-                    )
-                    .disabled(model.loginItemBusy)
-                    if model.loginItemBusy {
-                        ProgressView()
-                            .controlSize(.mini)
-                    }
-                    if model.loginItemNeedsApproval {
-                        Button("Open System Settings") {
-                            model.openLoginItemsSettings()
-                        }
-                        .controlSize(.small)
-                    }
-                }
-
-                Label {
-                    Text(model.loginItemStatusText)
-                        .font(.caption2)
-                        .foregroundStyle(
-                            model.loginItemStatusIsError ? .red : .secondary
-                        )
-                } icon: {
-                    Image(
-                        systemName: model.loginItemStatusIsError
-                            ? "exclamationmark.circle.fill"
-                            : "info.circle.fill"
-                    )
-                    .font(.caption2)
-                    .foregroundStyle(model.loginItemStatusIsError ? .red : .secondary)
-                }
-
-                if !model.appIsInApplicationsFolder {
-                    Text(
-                        "For a reliable launch at login, move the signed app to /Applications and register it there."
-                    )
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                }
-            }
-            .toggleStyle(.checkbox)
-        }
-    }
-
-    private var remoteControlSection: some View {
-        ControlSection(title: "Remote control", systemImage: "network") {
-            VStack(alignment: .leading, spacing: 6) {
-                Toggle(
-                    "Enable local HTTP API",
-                    isOn: Binding(
-                        get: { model.enableLocalAPI },
-                        set: { model.setEnableLocalAPI($0) }
-                    )
-                )
-                .toggleStyle(.checkbox)
-
-                Text(
-                    "Lets a script or a Stream Deck plugin start/stop output and read status. Listens on 127.0.0.1 only and requires a token; never reachable from the network."
-                )
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-
-                if model.enableLocalAPI {
-                    Button("Reveal Connection Info in Finder") {
-                        LocalAPICredentials.revealInFinder()
-                    }
-                    .controlSize(.small)
-                }
-            }
-        }
-    }
-
     private var statusSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top, spacing: 8) {
@@ -472,7 +371,7 @@ struct ControlView: View {
                     .controlSize(.small)
             }
 
-            if model.canStop {
+            if model.showsStop {
                 Button("Stop", role: .destructive) {
                     model.requestStop()
                 }

@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-09-20
+
+### Added
+
+- A plugin for OpenDeck and Stream Deck (`Tools/openpromptr-streamdeck`) with
+  keys for start/stop, rotation and flipping. Keys follow the app's live state
+  and each can carry its own label.
+
+### Changed
+
+- Startup and recovery options and the local HTTP API switch moved from the
+  control window into a Settings window (⌘,).
+- The control window shows **Stop** only while output is running, starting or
+  recovering.
+
+### Fixed
+
+- A missing target display no longer shows a red "Start failed" error; the app
+  waits quietly for it, as it does for a missing source.
+- Builds with the macOS 27 SDK no longer fail on a data-race diagnostic in
+  `FrameRenderer`.
+
 ## [1.2.0] - 2026-09-17
 
 ### Added
@@ -69,7 +91,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Static same-screen captures.
 - ScreenCaptureKit support on Swift 6.1.
 
-[Unreleased]: https://github.com/trsdn/OpenPromptr/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/trsdn/OpenPromptr/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/trsdn/OpenPromptr/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/trsdn/OpenPromptr/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/trsdn/OpenPromptr/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/trsdn/OpenPromptr/compare/v1.0.0...v1.0.1

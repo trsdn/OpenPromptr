@@ -337,6 +337,10 @@ struct OpenPromptrApp: App {
                 .disabled(model.isBusy)
             }
         }
+
+        Settings {
+            SettingsView(model: model)
+        }
     }
 }
 
