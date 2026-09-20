@@ -103,15 +103,7 @@ final class AppModel: ObservableObject {
         "Checking launch-at-login status …"
     @Published private(set) var loginItemStatusIsError = false
 
-    private enum Lifecycle: Equatable {
-        case idle
-        case waiting
-        case recovering
-        case starting(UInt64)
-        case running
-        case stopping
-        case blocked
-    }
+    private typealias Lifecycle = OutputLifecycle
 
     private enum BlockReason: Equatable {
         case permission
@@ -196,12 +188,15 @@ final class AppModel: ObservableObject {
     }
 
     var canStart: Bool {
-        !isRunning && !isBusy && workingTargetIdentity != nil
-            && workingSource.isComplete
+        OutputControls.canStart(
+            lifecycle: lifecycle,
+            hasTarget: workingTargetIdentity != nil,
+            sourceIsComplete: workingSource.isComplete
+        )
     }
 
     var canStop: Bool {
-        desiredOutput || isRunning || isBusy
+        OutputControls.canStop(desiredOutput: desiredOutput, lifecycle: lifecycle)
     }
 
     /// Whether the control window offers Stop: only while there is output to
@@ -209,7 +204,7 @@ final class AppModel: ObservableObject {
     /// Narrower than `canStop`, which also covers a merely desired output
     /// (waiting for a display) and gates updates.
     var showsStop: Bool {
-        isRunning || isBusy || lifecycle == .recovering
+        lifecycle.showsStop
     }
 
     var usesVirtualSource: Bool {
@@ -975,23 +970,27 @@ final class AppModel: ObservableObject {
         }
 
         guard let target = resolvedTarget, resolvedSourceIsAvailable else {
-            if lifecycle == .recovering {
+            if DisplaysUnavailableResponse.cancelsRecovery(lifecycle: lifecycle) {
                 cancelRecovery(resetBudget: false)
                 blockReason = nil
             }
-            if case .starting = lifecycle {
+            switch DisplaysUnavailableResponse.decide(
+                lifecycle: lifecycle,
+                hasCaptureSession: captureSession != nil
+            ) {
+            case .discardStartAndWait:
                 operationEpoch &+= 1
                 setStatus(waitingStatusText, isError: false)
-                return
-            }
-            if lifecycle == .running || captureSession != nil {
+            case .stopAndWait:
                 await stopCommittedOutput(
                     message: waitingStatusText,
                     isError: false
                 )
-            } else if lifecycle != .stopping {
+            case .wait:
                 setLifecycle(.waiting)
                 setStatus(waitingStatusText, isError: false)
+            case .leaveAlone:
+                break
             }
             return
         }
@@ -1247,37 +1246,41 @@ final class AppModel: ObservableObject {
             }
 
             refreshDisplaySnapshot()
-            if isTransientSourceStartError(startError) {
-                // The virtual source display is not online or ready for screen
-                // capture yet (for example right after creation during a
-                // launch-at-login start), or the display configuration changed
-                // while starting up. Do not block permanently: wait for the
-                // next display change and retry automatically.
+            let response = StartFailureResponse.decide(
+                Self.startFailureKind(of: startError),
+                targetIsResolved: resolvedTarget != nil,
+                hasPendingRecovery: recoveryFailure != nil
+            )
+            switch response.outcome {
+            case .waitQuietly:
+                // A display or window is not there yet (for example the virtual
+                // source right after creation during a launch-at-login start,
+                // or a target monitor that is not connected, or the display
+                // configuration changed while starting up). Do not block
+                // permanently and do not call it a failure: wait for the next
+                // display change and retry automatically.
                 blockReason = nil
                 setLifecycle(.waiting)
                 setStatus(
                     waitingStatusText,
                     isError: false
                 )
-                if recoveryFailure != nil {
+                if response.schedulesRecovery {
                     scheduleRecovery(after: "Start interrupted: \(startError.localizedDescription)")
                 }
-            } else if resolvedTarget != nil {
+            case .blockWithError:
                 blockReason = .capture
                 setLifecycle(.blocked)
                 setStatus(
                     "Start failed: \(startError.localizedDescription) Try again with \"Start output\".",
                     isError: true
                 )
-                if case .sourceIsTarget = startError as? DisplayResolutionError {
+                if response.clearsRecoveryFailure {
                     recoveryFailure = nil
-                } else {
+                }
+                if response.schedulesRecovery {
                     scheduleRecovery(after: "Start failed: \(startError.localizedDescription)")
                 }
-            } else {
-                blockReason = nil
-                setLifecycle(.waiting)
-                setStatus(waitingStatusText, isError: false)
             }
         }
     }
@@ -1423,9 +1426,12 @@ final class AppModel: ObservableObject {
             guard epoch == operationEpoch else {
                 return
             }
-            if resolvedTarget != nil, resolvedSourceIsAvailable {
+            switch CaptureEndedResponse.decide(
+                displaysAvailable: resolvedTarget != nil && resolvedSourceIsAvailable
+            ) {
+            case .recover:
                 await recoverFromFailure("Screen capture stopped: \(message)")
-            } else {
+            case .stopAndWait:
                 blockReason = nil
                 await stopCommittedOutput(
                     message: waitingStatusText,
@@ -1543,21 +1549,25 @@ final class AppModel: ObservableObject {
         }
         recoveryFailure = message
         permissionGranted = CGPreflightScreenCaptureAccess()
-        guard permissionGranted else {
+        let delay: Int
+        switch RecoveryDecision.decide(
+            permissionGranted: permissionGranted,
+            displaysAvailable: resolvedTarget != nil && resolvedSourceIsAvailable,
+            nextDelay: recoveryPolicy.nextDelay
+        ) {
+        case .blockForPermission:
             blockReason = .permission
             setLifecycle(.blocked)
             setStatus(
                 "Screen recording permission is missing. Grant access in System Settings.",
                 isError: true)
             return
-        }
-        guard resolvedTarget != nil, resolvedSourceIsAvailable else {
+        case .waitForDisplays:
             blockReason = nil
             setLifecycle(.waiting)
             setStatus(waitingStatusText, isError: false)
             return
-        }
-        guard let delay = recoveryPolicy.nextDelay else {
+        case .exhausted:
             blockReason = .capture
             setLifecycle(.blocked)
             setStatus(
@@ -1565,6 +1575,8 @@ final class AppModel: ObservableObject {
                 isError: true)
             lifecycleLogger.error("Automatic recovery exhausted after 3 attempts.")
             return
+        case .retry(let seconds):
+            delay = seconds
         }
 
         blockReason = nil
@@ -1698,20 +1710,19 @@ final class AppModel: ObservableObject {
     /// autostart) or the display configuration changed mid-start. These
     /// self-heal on the next screen-parameters change, so we wait and retry
     /// instead of hard-blocking.
-    private func isTransientSourceStartError(_ error: Error) -> Bool {
+    /// Maps a start error onto what the response to it depends on.
+    private static func startFailureKind(of error: Error) -> StartFailureKind {
         guard let error = error as? DisplayResolutionError else {
-            return false
+            return .other
         }
         switch error {
-        case .virtualSourceUnavailable,
-            .sourceDisplayUnavailable,
-            .sourceWindowUnavailable,
-            .targetDisplayUnavailable,
-            .configurationChanged:
-            return true
-        case .sourceIsTarget,
-            .screenCaptureSourceUnavailable:
-            return false
+        case .virtualSourceUnavailable: return .virtualSourceUnavailable
+        case .sourceDisplayUnavailable: return .sourceDisplayUnavailable
+        case .sourceWindowUnavailable: return .sourceWindowUnavailable
+        case .targetDisplayUnavailable: return .targetDisplayUnavailable
+        case .configurationChanged: return .configurationChanged
+        case .sourceIsTarget: return .sourceIsTarget
+        case .screenCaptureSourceUnavailable: return .screenCaptureSourceUnavailable
         }
     }
 
@@ -1723,13 +1734,8 @@ final class AppModel: ObservableObject {
 
     private func setLifecycle(_ newValue: Lifecycle) {
         lifecycle = newValue
-        isRunning = newValue == .running
-        switch newValue {
-        case .starting, .stopping:
-            isBusy = true
-        case .idle, .waiting, .recovering, .running, .blocked:
-            isBusy = false
-        }
+        isRunning = newValue.isRunning
+        isBusy = newValue.isBusy
     }
 
     private func updateIdleStatus() {

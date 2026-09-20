@@ -147,7 +147,9 @@ Info.plist location, resource bundles).
 ```text
 Sources/
 ├── OpenPromptrCore/     Pure logic: models, capture sizing, aspect-fit math,
-│                        the output-recovery policy. No AppKit/SwiftUI, no I/O.
+│                        the output-recovery policy, and the decisions behind
+│                        start/stop/recovery (`OutputDecisions.swift`). No
+│                        AppKit/SwiftUI, no I/O.
 ├── VirtualDisplayBridge/ Objective-C bridge to the private CGVirtualDisplay
 │                        API, in its own target because a single SwiftPM
 │                        target can't mix Swift and Objective-C. ARC.
