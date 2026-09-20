@@ -92,6 +92,18 @@ the invisible virtual display.
 - Xcode or Command Line Tools with Swift 6
 - Screen Recording permission for the built app bundle
 
+## Versioning and language
+
+Releases are tagged `vMAJOR.MINOR.PATCH` and follow
+[Semantic Versioning](https://semver.org/spec/v2.0.0.html): a patch release only
+fixes bugs, a minor release adds behavior without breaking what exists, and a
+major release may change or remove it. That covers the app, its local HTTP API
+and the Stream Deck plugin. Every version's changes are in
+[`CHANGELOG.md`](CHANGELOG.md). The app supports macOS 13 and later.
+
+The app's interface is **English only**; there are no localizations and none are
+planned.
+
 ## Building and testing
 
 ```bash

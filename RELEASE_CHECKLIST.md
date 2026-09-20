@@ -87,6 +87,29 @@ shasum -a 256 -c OpenPromptr-v<version>-macOS-arm64.dmg.sha256
 Then mount it, drag the app to `/Applications`, and confirm on a machine
 that has never run it that it starts without a Gatekeeper warning.
 
+## Smoke test of the published release
+
+`Scripts/smoke-published.sh` is the smoke kit. It needs nobody at the machine:
+
+```bash
+Scripts/smoke-published.sh v<version>
+```
+
+It downloads the published DMGs, zip and checksums, and checks the checksums,
+that the AppUpdater copy is the same file, that the notarization ticket is
+stapled, that Gatekeeper accepts the DMG and the app, that the signature
+verifies, and that the app launches and reports the version the tag names. Exit
+status 0 is a pass. It does **not** capture a source or draw on a display; that
+needs a display and a Screen Recording grant, so it stays the manual check in
+step 4 above.
+
+Run it after every release and add a row. A record stands for later releases
+until one changes how the app is built, signed or packaged.
+
+| Version | Date | Result | Run by |
+| --- | --- | --- | --- |
+| v1.3.0 | 2026-09-20 | pass — 9 of 9 checks; app reports `OpenPromptr 1.3.0 (64)` | AI agent |
+
 ## Testing the updater
 
 Existing installs of the pre-rename *Teleprompter Mirror* have no updater at

@@ -21,6 +21,9 @@ swift format lint --strict --recursive Sources Tests Package.swift
 
 # Build, bundle, and sign -> dist/OpenPromptr.app
 ./build-app.sh
+
+# Smoke-test a published release (downloads it; no operator needed)
+Scripts/smoke-published.sh v<version>
 ```
 
 There is no Xcode project. Everything goes through SwiftPM; the app bundle is
