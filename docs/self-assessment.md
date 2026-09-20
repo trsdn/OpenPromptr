@@ -2,10 +2,14 @@
 
 Assessed against the
 [trsdn Repository Quality Standard](https://github.com/trsdn/.github/blob/main/docs/repository-quality-standard.md)
-v1.11.1 on 2026-09-17. The machine-readable result is
+v1.15.0 on 2026-09-20, by an AI agent reading the repository, the GitHub API and
+the published v1.3.0 release. The machine-readable result is
 [`.github/conformance.yml`](../.github/conformance.yml); this document is the
 evidence for every criterion that isn't a clean pass. A clean pass isn't
 repeated here — see `standard.yml`'s catalog for what each ID means.
+
+Overall state: **Healthy**: no criterion is `Fail`. Two are `Partial`, and both
+are stated below.
 
 ## Profiles claimed
 
@@ -23,45 +27,77 @@ Archived (the repository is active).
 
 ## Partial
 
-- **B05** — `AGENTS.md` and the README document the individual commands
-  (`swift build`, `swift test`, `swift format lint`, `./build-app.sh`), but
-  there's no single combined gate script. Running all of them is a few lines,
-  not one command.
-- **I03** — the app bundle's `NSHumanReadableCopyright` names the copyright
-  holder, but no license identifier (e.g. "MIT") is embedded in the bundle
-  itself, only in the repository's `LICENSE` file.
-- **L03** — the primary language is English in practice (`CONTRIBUTING.md`
-  states it for contributions) and there is exactly one locale, but nothing
-  states outright "this app is English-only, no localization is planned."
-- **P08** — README badges (CI, License, Platform, Swift) exist but haven't
-  been diffed against the org's specific badge convention document.
-- **P09** — no self-hosted, generated repository-activity visualization
-  exists; unclear whether this specific evidence is expected for a repo this
-  size, so recorded as partial rather than guessed at either way.
-- **R01, R02** — the README states the current version and macOS
-  compatibility informally; there's no separate package manifest (this isn't
-  a distributed package) and no explicit written compatibility/versioning
-  policy beyond "tags are semver, see CHANGELOG."
+- **P09** — the card exists as a mechanism, not yet as a rendered image.
+  `.github/workflows/stats.yml` runs `trsdn/.github`'s reusable `repo-stats`
+  workflow (pinned to a commit) daily and on dispatch, writing the card to the
+  `stats` branch, and the README embeds it with a `<picture>` element. A
+  workflow can only be dispatched from the default branch, so the first run
+  happens after this change is merged; until then the README image does not
+  resolve. Becomes `Pass` once the run has produced `repo-card.svg` and
+  `repo-card-dark.svg` on `stats`.
+- **S02** — reading applied: the main entry point of a graphical application is
+  the logic behind its action, reached without its views. The 45 tests
+  (`OpenPromptrCoreTests`) cover the pure logic — aspect fit, capture sizing,
+  the recovery policy, display identity matching, the local API's parsing and
+  token check — including failure paths (rejected tokens, invalid settings,
+  exhausted retries). They do not cover the capture pipeline, `AppModel` or the
+  virtual display, which need a real display and a Screen Recording grant.
+  `AGENTS.md` says so. A suite that covers a supporting part of the action is a
+  `Partial`. Closing this needs the capture path split so its decisions can run
+  without ScreenCaptureKit, which is a change to code that `swift test` cannot
+  verify end to end, so it was not attempted here.
 
 ## Resolved since the last pass
 
-- **R03–R08** — `v1.2.0` (2026-09-17) is a real, signed, notarized release:
-  `trsdn/macos-notarization-broker`'s `openpromptr` profile now builds the
-  correct source (#49, #50) and produces `OpenPromptr-v{version}-macOS-arm64.{zip,dmg}`
-  plus the AppUpdater-required `OpenPromptr-{version}.dmg` copy (R03, R04).
-  The broker's own preflight/`validate_app_tree` smoke-tests the bundle
-  before signing (R05). Release notes come from the CHANGELOG entry (R06).
-  As of `scripts/request.sh` on the broker (PR #53), this is enforced, not
-  just practiced: `--publish` fetches `CHANGELOG.md` at the tag through the
-  API and fails the release outright if the entry for that version is
-  missing, empty, or still sitting under `## Unreleased` (R07 — the trsdn
-  standard's decision 0010 gate, mandatory for every profile on that
-  broker, not just this one). `provenance.json` is uploaded as a release
-  asset, recording the source commit, tag, and signing identity, so a
-  consumer can verify where the artifact came from (R08). Verified live:
-  `xcrun stapler validate` and `spctl --assess` both accept the published
-  DMG as "Notarized Developer ID", and the R07 gate was tested against
-  `v1.2.0`'s real `CHANGELOG.md` entry before merging.
+- **R03–R08** — `v1.2.0` and `v1.3.0` are real, signed, notarized releases
+  produced by `trsdn/macos-notarization-broker`'s `openpromptr` profile, started
+  for the tag with the command in `RELEASE_CHECKLIST.md` (R03). Tag, version and
+  release title agree (R04). Release notes are the CHANGELOG entry for the
+  version, and the broker refuses to publish without it (R06, R07).
+  `provenance.json` is a release asset, and `stapler validate` and `spctl` both
+  accept the DMG (R08). `R05` moved to partial only because 1.14.0 asks for more
+  than the broker's own preflight (see above).
+- **R05** — 1.15.0 asks for a smoke kit, a documented command that checks the
+  published artifact without an operator, run and recorded. `Scripts/smoke-published.sh`
+  is that kit and is documented in `RELEASE_CHECKLIST.md`; it was run against
+  v1.3.0 on 2026-09-20 (9 of 9 checks: checksums, updater copy identical,
+  notarization stapled, Gatekeeper accepts DMG and app, signature verifies,
+  bundle identifier and version, app launches and reports `OpenPromptr 1.3.0
+  (64)`), and the result is in the log there. The core function is not
+  exercised, and the standard no longer requires it.
+- **R02** — the README now states the SemVer scheme and what a consumer can rely
+  on across versions.
+- **L03** — the README now declares the interface English-only, with no
+  localizations planned.
+- **B05** — the commands are documented in `AGENTS.md`, and the latest run of
+  them on `main` (CI, 2026-09-20) is green; 1.15.0 counts that as run.
+- **P08** — the badge block is now license, platform, CI, latest release,
+  conformance, in the standard's order. License and release come from GitHub
+  through shields.io, CI is GitHub's own badge, conformance is the committed
+  badge regenerated by `conformance.py`, and the platform badge is checked
+  against `Package.swift` by a CI step, so it cannot drift. The Swift badge was
+  dropped; the toolchain requirement lives in the README's Requirements.
+- **S03, S04** — the Stream Deck plugin now has a CI job (`Stream Deck plugin`)
+  that runs `npm test`: a syntax check, a format check (no tabs, no trailing
+  whitespace, final newline, line length) and an unused-import check, written
+  without dependencies because the plugin has none, plus its functional tests.
+  Its claim of Node 20 or newer is covered by the runner's Node.
+- **B13** — the build and validation commands, the self-test, the icon
+  generation and the platform requirements each have one home (`AGENTS.md`,
+  README) and `CONTRIBUTING.md` links to them. `CONTRIBUTING.md` had also
+  claimed there were no third-party dependencies, which stopped being true with
+  AppUpdater and Swifter.
+- **I03, R01** — `Config/Info.plist` now embeds `OPRLicenseIdentifier` and
+  `OPRProductDescription`; `RELEASE_CHECKLIST.md` states which property lives
+  where and what mirrors it.
+- **W03** — the site still described v1.2.0 after v1.3.0 was published. Fixed in
+  the same change as this assessment (download links, version badge, "describes
+  version" line).
+- **G02** — `AGENTS.md`'s layout and command list did not mention
+  `Tools/openpromptr-streamdeck` or its `npm test`. Fixed in the same change.
+- **W05, W06** — retired in standard 1.12.0 and recorded `na`. **W09** (a site
+  designed for the project) passes: `docs/index.html` is a bespoke page, see
+  [decision 0013](https://github.com/trsdn/.github/blob/main/docs/decisions/0013-sites-are-designed-not-templated.md).
 
 ## Not applicable
 
@@ -82,12 +118,10 @@ Archived (the repository is active).
 ## Worth noting on otherwise-passing criteria
 
 - **X01** (keyboard operability) — verified by code review, not live
-  end-to-end testing: every interactive control in `ControlView.swift` is a
+  end-to-end testing: every interactive control in `ControlView.swift` and `SettingsView.swift` is a
   native SwiftUI `Button`/`Toggle`/`Picker`, which macOS gives standard Tab
   focus order and a focus ring for free, and there's no custom-drawn
   hit-testing that would bypass it. Not tested with an actual screen reader
   or a physical keyboard walkthrough.
 - **W01** — "repeatable, documented process" here is simply: GitHub Pages
-  serves `docs/` from `main` directly, no build step. That's the whole
-  process; there's nothing to document beyond what `docs/assets/VENDORED.md`
-  already says about updating the vendored assets.
+  serves `docs/` from `main` directly, no build step and no vendored assets.

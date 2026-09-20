@@ -23,6 +23,22 @@ jobs:
         run: swift test
       - name: Lint formatting
         run: swift format lint --strict --recursive Sources Tests Package.swift
+      - name: Check the README platform badge against Package.swift
+        run: |
+          v="$(sed -n 's/.*\.macOS(\.v\([0-9]*\)).*/\1/p' Package.swift)"
+          test -n "$v"
+          grep -q "Platform-macOS%20${v}%2B" README.md
+
+  plugin:
+    name: Stream Deck plugin
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Node version
+        run: node --version
+      - name: Format, static checks and tests
+        working-directory: Tools/openpromptr-streamdeck
+        run: npm test
 
   bundle:
     name: App bundle

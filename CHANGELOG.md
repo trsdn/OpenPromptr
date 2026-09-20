@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The app bundle now embeds its licence identifier and product description in
+  `Info.plist`.
+- A repository statistics card, generated daily to the `stats` branch, in the
+  README.
+
 ## [1.3.0] - 2026-09-20
 
 ### Added

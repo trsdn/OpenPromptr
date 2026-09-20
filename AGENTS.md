@@ -13,11 +13,17 @@ swift build
 # Unit tests (swift-testing: @Test / #expect, no XCTest)
 swift test
 
+# Stream Deck plugin: format, static checks and tests (Node 20+; run in CI too)
+(cd Tools/openpromptr-streamdeck && npm test)
+
 # Formatting check (must be clean; CI enforces this)
 swift format lint --strict --recursive Sources Tests Package.swift
 
 # Build, bundle, and sign -> dist/OpenPromptr.app
 ./build-app.sh
+
+# Smoke-test a published release (downloads it; no operator needed)
+Scripts/smoke-published.sh v<version>
 ```
 
 There is no Xcode project. Everything goes through SwiftPM; the app bundle is
@@ -28,12 +34,8 @@ assembled manually in `build-app.sh`.
 (`git fetch --tags` / a non-shallow checkout) to produce a meaningful version;
 outside a git checkout it falls back to whatever is in `Config/Info.plist`.
 
-Optional runtime self-test, once the built app already holds Screen Recording
-permission:
-
-```bash
-open "dist/OpenPromptr.app" --args --self-test
-```
+The optional runtime self-test is described in the
+[README](README.md#optional-runtime-self-test).
 
 `--version` prints the version/build and exits — no window is created.
 
@@ -45,9 +47,15 @@ open "dist/OpenPromptr.app" --args --self-test
   Connect key to this repository**, in any form. Distributable, notarized
   builds go through `trsdn/macos-notarization-broker` specifically so this
   never has to happen.
-- **Add a secret or a write permission to any workflow here.** `ci.yml` runs
-  with `contents: read` and no secrets, which is what makes it safe to run
-  against any pull request, including from a fork.
+- **Add a secret to any workflow, or a write permission to any workflow other
+  than `stats.yml`.** `ci.yml` runs with `contents: read` and no secrets, which
+  is what makes it safe to run against any pull request, including from a
+  fork. `stats.yml` is the one exception: it renders the repository statistics
+  card (criterion `P09`) and may hold `contents: write`, declared on its job
+  only, because it commits to the generated `stats` branch. It must stay that
+  narrow: no secrets, no `pull_request` trigger, only `schedule`,
+  `workflow_dispatch` and a `push` to `main` of its own file, and it writes
+  only the `stats` branch, never `main`.
 - **Rewrite published history.** No `git rebase`, `commit --amend`, or
   `push --force` against `main`. A ruleset blocks force pushes and deletion of
   `main`; branches with an open pull request are on trust.
@@ -148,6 +156,11 @@ Sources/
                          process, main.swift's dispatch between the two,
                          Update/ (AppUpdater integration, see #7), and
                          LocalAPI/ (the loopback HTTP control API, see #4).
+
+Tools/
+└── openpromptr-streamdeck/  OpenDeck / Stream Deck plugin (plain JavaScript,
+                         no dependencies, no build step). A client of the local
+                         API; installed with its own `install.sh`.
 ```
 
 Three source types feed one output pipeline: a private virtual display, a

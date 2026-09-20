@@ -1,0 +1,29 @@
+name: Repository stats
+
+# Renders the repository statistics card (standard criterion P09) and commits it
+# to the generated `stats` branch, because `main` is protected. This is the only
+# workflow here that may write, and it never runs for a pull request.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 5 * * *"
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/stats.yml
+
+permissions: {}
+
+jobs:
+  stats:
+    permissions:
+      contents: write
+    uses: trsdn/.github/.github/workflows/repo-stats.yml@38969dfb6575240ff1c7096672e503022aa0910a # main
+    with:
+      output-dir: .github/stats
+      theme: both
+      cards: repo-card
+      branch: stats
+      commit-message: "chore(stats): update repository stats"
