@@ -23,6 +23,22 @@ layout, architecture, entitlements, or minimum macOS version — is not a
 local decision. It requires a reviewed pull request against the broker's
 `profiles/apps.json`, and the release fails until that lands.
 
+## Where package metadata lives
+
+SwiftPM's `Package.swift` has no fields for a description, a licence or a
+repository URL, so those live in the file the app itself carries,
+`Config/Info.plist`, and the GitHub repository settings mirror them:
+
+| Property | Home | Mirrored in |
+| --- | --- | --- |
+| Name | `CFBundleName`, `CFBundleDisplayName` | repository name |
+| Version | the git tag, stamped into `CFBundleShortVersionString` and `CFBundleVersion` by the build | release title |
+| Description | `OPRProductDescription` | GitHub repository description |
+| Licence | `OPRLicenseIdentifier` (and `NSHumanReadableCopyright` for the holder) | `LICENSE`, GitHub licence |
+| Repository, issue tracker | `OPRRepositoryURL`, `OPRIssueTrackerURL` | GitHub |
+
+When one changes, change the others in the same pull request.
+
 ## Per release
 
 1. Update `CHANGELOG.md`: move entries out of *Unreleased* into a new

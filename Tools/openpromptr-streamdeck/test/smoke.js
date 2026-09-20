@@ -106,8 +106,10 @@ check("the plugin registers with the deck app", async () => {
 });
 
 check("a key that appears is painted from the app's state, with a custom label", async () => {
-    tell({ event: "willAppear", context: "out", action: "com.trsdn.openpromptr.output", payload: { settings: { title: "Prompter" } } });
-    tell({ event: "willAppear", context: "rot", action: "com.trsdn.openpromptr.rotation", payload: { settings: {} } });
+    const output = "com.trsdn.openpromptr.output";
+    const rotation = "com.trsdn.openpromptr.rotation";
+    tell({ event: "willAppear", context: "out", action: output, payload: { settings: { title: "Prompter" } } });
+    tell({ event: "willAppear", context: "rot", action: rotation, payload: { settings: {} } });
     await until(() => last("setTitle", "out") && last("setTitle", "rot"), "first paint");
     assert.equal(last("setTitle", "out").payload.title, "Prompter");
     assert.equal(last("setState", "out").payload.state, 0);
@@ -121,9 +123,11 @@ check("a change in the app repaints the key", async () => {
 
 check("a press becomes the matching request", async () => {
     requests.length = 0;
-    tell({ event: "keyDown", context: "out", action: "com.trsdn.openpromptr.output", payload: { settings: { title: "Prompter" } } });
+    const output = "com.trsdn.openpromptr.output";
+    tell({ event: "keyDown", context: "out", action: output, payload: { settings: { title: "Prompter" } } });
     await until(() => requests.includes("POST /v1/output/stop"), "the stop request");
-    tell({ event: "keyDown", context: "rot", action: "com.trsdn.openpromptr.rotation", payload: { settings: {} } });
+    const rotation = "com.trsdn.openpromptr.rotation";
+    tell({ event: "keyDown", context: "rot", action: rotation, payload: { settings: {} } });
     await until(() => requests.filter((r) => r === "POST /v1/transform").length === 1, "the transform request");
 });
 

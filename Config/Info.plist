@@ -41,5 +41,9 @@
     <string>https://github.com/trsdn/OpenPromptr/issues</string>
     <key>OPRRepositoryURL</key>
     <string>https://github.com/trsdn/OpenPromptr</string>
+    <key>OPRLicenseIdentifier</key>
+    <string>MIT</string>
+    <key>OPRProductDescription</key>
+    <string>Native macOS app that mirrors and rotates a virtual display, a physical display, or a single window onto a teleprompter screen.</string>
 </dict>
 </plist>

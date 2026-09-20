@@ -4,10 +4,11 @@
 
 # OpenPromptr
 
-[![CI](https://github.com/trsdn/OpenPromptr/actions/workflows/ci.yml/badge.svg)](https://github.com/trsdn/OpenPromptr/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/github/license/trsdn/OpenPromptr)](LICENSE)
 [![Platform: macOS 13+](https://img.shields.io/badge/Platform-macOS%2013%2B-lightgrey.svg)](#requirements)
-[![Swift 6.1](https://img.shields.io/badge/Swift-6.1-orange.svg)](Package.swift)
+[![CI](https://github.com/trsdn/OpenPromptr/actions/workflows/ci.yml/badge.svg)](https://github.com/trsdn/OpenPromptr/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/trsdn/OpenPromptr)](https://github.com/trsdn/OpenPromptr/releases/latest)
+[![Conformance](.github/badges/conformance.svg)](.github/conformance.yml)
 
 </div>
 
@@ -99,21 +100,16 @@ Releases are tagged `vMAJOR.MINOR.PATCH` and follow
 fixes bugs, a minor release adds behavior without breaking what exists, and a
 major release may change or remove it. That covers the app, its local HTTP API
 and the Stream Deck plugin. Every version's changes are in
-[`CHANGELOG.md`](CHANGELOG.md). The app supports macOS 13 and later.
+[`CHANGELOG.md`](CHANGELOG.md).
 
 The app's interface is **English only**; there are no localizations and none are
 planned.
 
 ## Building and testing
 
-```bash
-git clone https://github.com/trsdn/OpenPromptr.git
-cd OpenPromptr
-swift test
-./build-app.sh
-```
-
-The script creates `dist/OpenPromptr.app`. It automatically prefers an
+Clone the repository, then build and validate with the commands in
+[`AGENTS.md`](AGENTS.md#build--validate) — that is their one home.
+`./build-app.sh` creates `dist/OpenPromptr.app`. It automatically prefers an
 available identity of type **Developer ID Application**, falls back to **Apple
 Development**, and only falls back to an ad-hoc signature with a warning if no
 stable identity is available. There is no hard-coded team or certificate
@@ -389,6 +385,16 @@ label, and status text that used to be color-only (the launch-at-login line)
 now also carries an icon. This has not been tested end-to-end with VoiceOver.
 Automatic-recovery and status changes are conveyed visually and in text only;
 there are no sound cues.
+
+## Repository statistics
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/trsdn/OpenPromptr/stats/.github/stats/repo-card-dark.svg">
+  <img alt="Repository statistics" src="https://raw.githubusercontent.com/trsdn/OpenPromptr/stats/.github/stats/repo-card.svg">
+</picture>
+
+Generated daily by [`stats.yml`](.github/workflows/stats.yml) and committed to
+the `stats` branch, because `main` is protected.
 
 ## Contributing
 
