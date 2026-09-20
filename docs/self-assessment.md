@@ -8,8 +8,8 @@ the published v1.3.0 release. The machine-readable result is
 evidence for every criterion that isn't a clean pass. A clean pass isn't
 repeated here — see `standard.yml`'s catalog for what each ID means.
 
-Overall state: **Healthy**: no criterion is `Fail`. Two are `Partial`, and both
-are stated below.
+Overall state: **Healthy**: no criterion is `Fail`. One is `Partial`, stated
+below.
 
 ## Profiles claimed
 
@@ -27,14 +27,6 @@ Archived (the repository is active).
 
 ## Partial
 
-- **P09** — the card exists as a mechanism, not yet as a rendered image.
-  `.github/workflows/stats.yml` runs `trsdn/.github`'s reusable `repo-stats`
-  workflow (pinned to a commit) daily and on dispatch, writing the card to the
-  `stats` branch, and the README embeds it with a `<picture>` element. A
-  workflow can only be dispatched from the default branch, so the first run
-  happens after this change is merged; until then the README image does not
-  resolve. Becomes `Pass` once the run has produced `repo-card.svg` and
-  `repo-card-dark.svg` on `stats`.
 - **S02** — reading applied: the main entry point of a graphical application is
   the logic behind its action, reached without its views. The 45 tests
   (`OpenPromptrCoreTests`) cover the pure logic — aspect fit, capture sizing,
@@ -71,6 +63,13 @@ Archived (the repository is active).
   localizations planned.
 - **B05** — the commands are documented in `AGENTS.md`, and the latest run of
   them on `main` (CI, 2026-09-20) is green; 1.15.0 counts that as run.
+- **P09** — `.github/workflows/stats.yml` runs `trsdn/.github`'s reusable
+  `repo-stats` workflow (pinned to a commit) daily and on dispatch. It has run
+  (dispatch, 2026-09-20, success) and committed `repo-card.svg` and
+  `repo-card-dark.svg` to the `stats` branch; both are served at the URLs the
+  README embeds with a `<picture>` element, are `image/svg+xml`, and contain no
+  external references. The `stats` branch had to exist before the first run (the
+  workflow checks it out) and was created once from `main`.
 - **P08** — the badge block is now license, platform, CI, latest release,
   conformance, in the standard's order. License and release come from GitHub
   through shields.io, CI is GitHub's own badge, conformance is the committed
