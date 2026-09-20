@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A plugin for OpenDeck and Stream Deck (`Tools/openpromptr-streamdeck`) with
+  keys for start/stop, rotation and flipping. Keys follow the app's live state
+  and each can carry its own label.
+
 ### Changed
 
 - Startup and recovery options and the local HTTP API switch moved from the

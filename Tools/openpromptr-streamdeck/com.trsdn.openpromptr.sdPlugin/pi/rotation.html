@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="inspector.css">
+</head>
+<body>
+    <label for="mode">On press</label>
+    <select id="mode">
+        <option value="cw">Rotate a quarter turn clockwise</option>
+        <option value="ccw">Rotate a quarter turn counter-clockwise</option>
+        <option value="set">Set a fixed rotation</option>
+    </select>
+    <div id="degrees-field" hidden>
+        <label for="degrees">Rotation</label>
+        <select id="degrees">
+            <option value="0">0°</option>
+            <option value="90">90°</option>
+            <option value="180">180°</option>
+            <option value="270">270°</option>
+        </select>
+    </div>
+
+    <script src="inspector.js"></script>
+    <script>
+        OpenPromptrPI.labelControls({
+            defaultText: "{rotation}",
+            placeholders: ["rotation", "target", "display"],
+        });
+
+        const mode = document.getElementById("mode");
+        const degrees = document.getElementById("degrees");
+        const field = document.getElementById("degrees-field");
+
+        OpenPromptrPI.ready(({ settings }) => {
+            mode.value = settings.mode ?? "cw";
+            degrees.value = String(settings.degrees ?? 0);
+            field.hidden = mode.value !== "set";
+            mode.onchange = () => {
+                field.hidden = mode.value !== "set";
+                OpenPromptrPI.save({ mode: mode.value });
+            };
+            degrees.onchange = () => OpenPromptrPI.save({ degrees: Number(degrees.value) });
+        });
+    </script>
+</body>
+</html>

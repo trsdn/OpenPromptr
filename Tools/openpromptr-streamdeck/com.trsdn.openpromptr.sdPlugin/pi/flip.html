@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="inspector.css">
+</head>
+<body>
+    <label for="axis">Mirror</label>
+    <select id="axis">
+        <option value="h">Horizontally</option>
+        <option value="v">Vertically</option>
+    </select>
+
+    <script src="inspector.js"></script>
+    <script>
+        OpenPromptrPI.labelControls({
+            defaultText: "Flip {axis}\\n{flipped}",
+            placeholders: ["axis", "flipped", "rotation"],
+        });
+
+        const axis = document.getElementById("axis");
+
+        OpenPromptrPI.ready(({ settings }) => {
+            axis.value = settings.axis ?? "h";
+            axis.onchange = () => OpenPromptrPI.save({ axis: axis.value });
+        });
+    </script>
+</body>
+</html>
