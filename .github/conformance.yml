@@ -4,8 +4,8 @@
 # Criteria: https://github.com/trsdn/.github/blob/main/docs/repository-quality-standard.md
 # Evidence: docs/self-assessment.md (only for results that aren't a clean pass)
 
-standard_version: "1.11.1"
-assessed_on: "2026-09-17"
+standard_version: "1.14.0"
+assessed_on: "2026-09-20"
 state: "Needs work"
 evidence: "docs/self-assessment.md"
 
@@ -34,13 +34,13 @@ criteria:
   P06: pass
   P07: pass
   P08: partial
-  P09: partial
+  P09: fail
   P10: pass
   P11: pass
   S01: pass
   S02: pass
-  S03: pass
-  S04: pass
+  S03: partial
+  S04: partial
   S05: pass
   S06: pass
   S07: pass
@@ -60,7 +60,7 @@ criteria:
   R02: partial
   R03: pass
   R04: pass
-  R05: pass
+  R05: partial
   R06: pass
   R07: pass
   R08: pass
@@ -79,10 +79,11 @@ criteria:
   W02: pass
   W03: pass
   W04: pass
-  W05: pass
-  W06: pass
+  W05: na
+  W06: na
   W07: pass
   W08: pass
+  W09: pass
   G01: pass
   G02: pass
   G03: pass

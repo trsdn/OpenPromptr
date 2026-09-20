@@ -13,6 +13,9 @@ swift build
 # Unit tests (swift-testing: @Test / #expect, no XCTest)
 swift test
 
+# Stream Deck plugin tests (Node 20+; not run in CI)
+(cd Tools/openpromptr-streamdeck && npm test)
+
 # Formatting check (must be clean; CI enforces this)
 swift format lint --strict --recursive Sources Tests Package.swift
 
@@ -148,6 +151,11 @@ Sources/
                          process, main.swift's dispatch between the two,
                          Update/ (AppUpdater integration, see #7), and
                          LocalAPI/ (the loopback HTTP control API, see #4).
+
+Tools/
+└── openpromptr-streamdeck/  OpenDeck / Stream Deck plugin (plain JavaScript,
+                         no dependencies, no build step). A client of the local
+                         API; installed with its own `install.sh`.
 ```
 
 Three source types feed one output pipeline: a private virtual display, a
