@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Startup and recovery options and the local HTTP API switch moved from the
+  control window into a Settings window (⌘,).
+- The control window shows **Stop** only while output is running, starting or
+  recovering.
+
+### Fixed
+
+- A missing target display no longer shows a red "Start failed" error; the app
+  waits quietly for it, as it does for a missing source.
+- Builds with the macOS 27 SDK no longer fail on a data-race diagnostic in
+  `FrameRenderer`.
+
 ## [1.2.0] - 2026-09-17
 
 ### Added

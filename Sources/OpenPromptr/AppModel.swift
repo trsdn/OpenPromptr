@@ -204,6 +204,14 @@ final class AppModel: ObservableObject {
         desiredOutput || isRunning || isBusy
     }
 
+    /// Whether the control window offers Stop: only while there is output to
+    /// stop, i.e. running, starting/stopping, or retrying after a failure.
+    /// Narrower than `canStop`, which also covers a merely desired output
+    /// (waiting for a display) and gates updates.
+    var showsStop: Bool {
+        isRunning || isBusy || lifecycle == .recovering
+    }
+
     var usesVirtualSource: Bool {
         sourceKind == .virtualDisplay
     }
@@ -1698,11 +1706,11 @@ final class AppModel: ObservableObject {
         case .virtualSourceUnavailable,
             .sourceDisplayUnavailable,
             .sourceWindowUnavailable,
+            .targetDisplayUnavailable,
             .configurationChanged:
             return true
         case .sourceIsTarget,
-            .screenCaptureSourceUnavailable,
-            .targetDisplayUnavailable:
+            .screenCaptureSourceUnavailable:
             return false
         }
     }

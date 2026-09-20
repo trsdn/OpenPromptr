@@ -304,7 +304,7 @@ for how a release is actually cut and published.
 
 For control from outside the app — a script, a Stream Deck plugin — since
 the menu bar isn't reachable that way. Off by default; enable **Enable
-local HTTP API** under **Remote control**.
+local HTTP API** under **Remote control** in the Settings window (⌘,).
 
 - Binds `127.0.0.1` only; never reachable from the network.
 - A random token is generated on every launch and published, with the
