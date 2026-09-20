@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The decisions behind starting, stopping and recovering output (what a failed
+  start means, what to do when a display goes away, when to retry, when Start
+  and Stop are offered) moved from `AppModel` into `OpenPromptrCore` and are
+  unit-tested. No behavior change intended.
+
 ### Added
 
 - The app bundle now embeds its licence identifier and product description in

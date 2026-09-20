@@ -8,8 +8,7 @@ the published v1.3.0 release. The machine-readable result is
 evidence for every criterion that isn't a clean pass. A clean pass isn't
 repeated here — see `standard.yml`'s catalog for what each ID means.
 
-Overall state: **Healthy**: no criterion is `Fail`. One is `Partial`, stated
-below.
+Overall state: **Healthy**: no criterion is `Fail` and none is `Partial`.
 
 ## Profiles claimed
 
@@ -24,20 +23,6 @@ even though this isn't a "site repo" in the usual sense.
 Not claimed: Documentation (the primary product is the app, not documentation
 or content), Deployable (a distributed desktop app, not a deployed service),
 Archived (the repository is active).
-
-## Partial
-
-- **S02** — reading applied: the main entry point of a graphical application is
-  the logic behind its action, reached without its views. The 45 tests
-  (`OpenPromptrCoreTests`) cover the pure logic — aspect fit, capture sizing,
-  the recovery policy, display identity matching, the local API's parsing and
-  token check — including failure paths (rejected tokens, invalid settings,
-  exhausted retries). They do not cover the capture pipeline, `AppModel` or the
-  virtual display, which need a real display and a Screen Recording grant.
-  `AGENTS.md` says so. A suite that covers a supporting part of the action is a
-  `Partial`. Closing this needs the capture path split so its decisions can run
-  without ScreenCaptureKit, which is a change to code that `swift test` cannot
-  verify end to end, so it was not attempted here.
 
 ## Resolved since the last pass
 
@@ -70,6 +55,21 @@ Archived (the repository is active).
   README embeds with a `<picture>` element, are `image/svg+xml`, and contain no
   external references. The `stats` branch had to exist before the first run (the
   workflow checks it out) and was created once from `main`.
+- **S02** — reading applied: the main entry point of a graphical application is
+  the logic behind its action, reached without its views. For OpenPromptr the
+  action is "mirror a source onto a target display, and keep it up". The pure
+  math (aspect fit, capture sizing, rotation and mirroring) and the decisions
+  behind starting, stopping and recovering output live in `OpenPromptrCore`:
+  what a failed start means, what to do when a display goes away or a capture
+  stream ends, when and how often to retry (2, 5 and 15 seconds, then stop), and
+  when Start and Stop are offered. 60 tests cover them, including failure paths
+  (a missing monitor waits quietly, source equal to target is reported and never
+  retried, missing permission wins over everything, the retry budget runs out).
+  What is not tested is the code that calls ScreenCaptureKit and draws on a
+  display, which needs a real display and a Screen Recording grant; `AGENTS.md`
+  says so. The decisions were moved out of `AppModel` without a change of
+  behavior intended; `swift test` cannot show that the app wires them up the same
+  way, only a run of the built app can.
 - **P08** — the badge block is now license, platform, CI, latest release,
   conformance, in the standard's order. License and release come from GitHub
   through shields.io, CI is GitHub's own badge, conformance is the committed
