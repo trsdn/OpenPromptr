@@ -111,7 +111,12 @@ private final class DirectSampleBufferPresenter: @unchecked Sendable {
             }
         } else {
             backpressureStartUptime = nil
-            layer.enqueue(sampleBuffer)
+            // The SDK 27 annotates the layer as main-actor isolated, but
+            // `enqueue` is documented as thread-safe and every access here is
+            // serialized by `lock`. The buffer is not touched again by the
+            // caller after this call.
+            nonisolated(unsafe) let frame = sampleBuffer
+            layer.enqueue(frame)
 
             if layer.status == .failed {
                 isActive = false
