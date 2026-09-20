@@ -302,8 +302,9 @@ for how a release is actually cut and published.
 
 ## Local HTTP API
 
-For control from outside the app — a script, a Stream Deck plugin — since
-the menu bar isn't reachable that way. Off by default; enable **Enable
+For control from outside the app — a script, a Stream Deck plugin (see
+[`Tools/openpromptr-streamdeck`](Tools/openpromptr-streamdeck), for OpenDeck
+and Stream Deck) — since the menu bar isn't reachable that way. Off by default; enable **Enable
 local HTTP API** under **Remote control** in the Settings window (⌘,).
 
 - Binds `127.0.0.1` only; never reachable from the network.

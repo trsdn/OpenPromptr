@@ -1,0 +1,12 @@
+{
+  "name": "openpromptr-streamdeck",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A plugin for OpenDeck and the Elgato Stream Deck, so hardware keys can start and stop OpenPromptr's output and change its rotation and mirroring.",
+  "type": "module",
+  "scripts": {
+    "test": "node test/manifest.js && node test/deck-socket.js && node test/logic.js && node test/client.js && node test/smoke.js",
+    "install-plugin": "./install.sh"
+  },
+  "license": "MIT"
+}

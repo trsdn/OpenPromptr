@@ -1,0 +1,96 @@
+{
+  "$schema": "https://schemas.elgato.com/streamdeck/plugins/manifest.json",
+  "Name": "OpenPromptr",
+  "UUID": "com.trsdn.openpromptr",
+  "Author": "Torsten Mahr",
+  "Version": "0.1.0.0",
+  "Icon": "icons/plugin",
+  "Category": "OpenPromptr",
+  "CategoryIcon": "icons/category",
+  "CodePath": "plugin.js",
+  "Nodejs": {
+    "Version": "20"
+  },
+  "OS": [
+    {
+      "Platform": "mac",
+      "MinimumVersion": "13.0"
+    }
+  ],
+  "SDKVersion": 2,
+  "Software": {
+    "MinimumVersion": "6.4"
+  },
+  "Description": "Start and stop OpenPromptr's output and change its rotation and mirroring from a Stream Deck. Keys show what OpenPromptr is actually doing, and every key can carry its own label.",
+  "Actions": [
+    {
+      "Name": "Start / stop output",
+      "UUID": "com.trsdn.openpromptr.output",
+      "Icon": "icons/output",
+      "Tooltip": "Starts the output, or stops it while it runs. The key lights up while output is running.",
+      "Controllers": [
+        "Keypad"
+      ],
+      "PropertyInspectorPath": "pi/output.html",
+      "DisableAutomaticStates": true,
+      "States": [
+        {
+          "Image": "icons/output",
+          "Name": "Stopped",
+          "TitleAlignment": "bottom"
+        },
+        {
+          "Image": "icons/output-on",
+          "Name": "Running",
+          "TitleAlignment": "bottom"
+        }
+      ]
+    },
+    {
+      "Name": "Rotate",
+      "UUID": "com.trsdn.openpromptr.rotation",
+      "Icon": "icons/rotate",
+      "Tooltip": "Rotates the mirrored image a quarter turn, or sets a fixed rotation.",
+      "Controllers": [
+        "Keypad"
+      ],
+      "PropertyInspectorPath": "pi/rotation.html",
+      "DisableAutomaticStates": true,
+      "States": [
+        {
+          "Image": "icons/rotate",
+          "Name": "Other rotation",
+          "TitleAlignment": "bottom"
+        },
+        {
+          "Image": "icons/rotate-on",
+          "Name": "This rotation",
+          "TitleAlignment": "bottom"
+        }
+      ]
+    },
+    {
+      "Name": "Flip",
+      "UUID": "com.trsdn.openpromptr.flip",
+      "Icon": "icons/flip",
+      "Tooltip": "Mirrors the image horizontally or vertically. The key lights up while the image is flipped.",
+      "Controllers": [
+        "Keypad"
+      ],
+      "PropertyInspectorPath": "pi/flip.html",
+      "DisableAutomaticStates": true,
+      "States": [
+        {
+          "Image": "icons/flip",
+          "Name": "Normal",
+          "TitleAlignment": "bottom"
+        },
+        {
+          "Image": "icons/flip-on",
+          "Name": "Flipped",
+          "TitleAlignment": "bottom"
+        }
+      ]
+    }
+  ]
+}
