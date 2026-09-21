@@ -23,6 +23,12 @@ jobs:
         run: swift test
       - name: Lint formatting
         run: swift format lint --strict --recursive Sources Tests Package.swift
+      - name: Render the UI snapshots
+        run: |
+          .build/debug/OpenPromptr --render-ui-snapshots "$RUNNER_TEMP/ui-snapshots"
+          for f in control-light control-dark settings-light settings-dark; do
+            test -s "$RUNNER_TEMP/ui-snapshots/$f.png"
+          done
       - name: Check the README platform badge against Package.swift
         run: |
           v="$(sed -n 's/.*\.macOS(\.v\([0-9]*\)).*/\1/p' Package.swift)"

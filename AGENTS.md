@@ -22,6 +22,9 @@ swift format lint --strict --recursive Sources Tests Package.swift
 # Build, bundle, and sign -> dist/OpenPromptr.app
 ./build-app.sh
 
+# Render the app's windows to PNG for a visual HIG review (see docs/ui-snapshot-review.md)
+.build/debug/OpenPromptr --render-ui-snapshots .artifacts/ui-snapshots
+
 # Smoke-test a published release (downloads it; no operator needed)
 Scripts/smoke-published.sh v<version>
 ```

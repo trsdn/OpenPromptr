@@ -12,6 +12,10 @@ if CommandLine.arguments.contains("--version") {
 
 if CommandLine.arguments.contains(VirtualDisplayHostProtocol.argument) {
     VirtualDisplayHostMain.run()
+} else if CommandLine.arguments.contains("--render-ui-snapshots") {
+    MainActor.assumeIsolated {
+        UISnapshotRenderer.run(arguments: CommandLine.arguments)
+    }
 } else {
     OpenPromptrApp.main()
 }
