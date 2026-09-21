@@ -14,8 +14,13 @@ struct ControlSection<Content: View>: View {
             Label(title, systemImage: systemImage)
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
             content
         }
+        // A named group for VoiceOver, the way a native GroupBox is one; the
+        // visible heading is what names it, so it is not read twice.
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(title)
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
@@ -135,7 +140,7 @@ struct ControlView: View {
         HStack(spacing: 10) {
             Image(systemName: "rectangle.on.rectangle.angled")
                 .font(.title2)
-                .foregroundStyle(.blue)
+                .foregroundStyle(.tint)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text("OpenPromptr")
@@ -152,12 +157,18 @@ struct ControlView: View {
     @ViewBuilder
     private var runningBadge: some View {
         if model.isRunning {
-            Label("Output running", systemImage: "dot.radiowaves.left.and.right")
-                .font(.caption.weight(.medium))
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(Capsule().fill(Color.green.opacity(0.18)))
-                .foregroundStyle(.green)
+            // Green marks the state, the text stays in the primary label color:
+            // green text on a pale green capsule is too faint in light mode.
+            Label {
+                Text("Output running")
+            } icon: {
+                Image(systemName: "dot.radiowaves.left.and.right")
+                    .foregroundStyle(.green)
+            }
+            .font(.caption.weight(.medium))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Capsule().fill(Color.green.opacity(0.18)))
         }
     }
 
@@ -185,7 +196,7 @@ struct ControlView: View {
                     model.openDisplaySettings()
                 } label: {
                     Label(
-                        "Arrangement in Display Settings …",
+                        "Arrangement in Display Settings…",
                         systemImage: "arrow.up.forward.app"
                     )
                     .font(.caption)
@@ -272,9 +283,14 @@ struct ControlView: View {
                     .foregroundStyle(.secondary)
             }
             if let notice = model.singleDisplayNotice {
-                Label(notice, systemImage: "exclamationmark.triangle")
-                    .font(.caption2)
-                    .foregroundStyle(.orange)
+                Label {
+                    Text(notice)
+                        .foregroundStyle(.secondary)
+                } icon: {
+                    Image(systemName: "exclamationmark.triangle")
+                        .foregroundStyle(.orange)
+                }
+                .font(.caption2)
             }
         }
     }
@@ -328,6 +344,7 @@ struct ControlView: View {
                         : "info.circle.fill"
                 )
                 .foregroundStyle(model.statusIsError ? .red : .secondary)
+                .accessibilityHidden(true)
 
                 Text(model.statusText)
                     .font(.caption)
@@ -336,6 +353,12 @@ struct ControlView: View {
                     )
                     .fixedSize(horizontal: false, vertical: true)
             }
+            // The icon is decorative; a state that only colour and a symbol
+            // convey is spoken as text.
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(
+                model.statusIsError ? "Error: \(model.statusText)" : model.statusText
+            )
 
             if !model.permissionGranted {
                 HStack {
@@ -372,10 +395,11 @@ struct ControlView: View {
             }
 
             if model.showsStop {
+                // No .cancelAction: Esc means "dismiss", and must not end a
+                // running teleprompter. Stop is ⌘. in the Output menu.
                 Button("Stop", role: .destructive) {
                     model.requestStop()
                 }
-                .keyboardShortcut(.cancelAction)
             }
             if !model.isRunning && !model.isBusy {
                 Button("Start output") {

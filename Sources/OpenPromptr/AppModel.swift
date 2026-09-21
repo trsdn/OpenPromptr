@@ -94,13 +94,13 @@ final class AppModel: ObservableObject {
     @Published private(set) var isBusy = false
     @Published private(set) var isRefreshingWindows = false
     @Published private(set) var permissionGranted = false
-    @Published private(set) var statusText = "Looking for displays …"
+    @Published private(set) var statusText = "Looking for displays…"
     @Published private(set) var statusIsError = false
     @Published private(set) var loginItemEnabled = false
     @Published private(set) var loginItemBusy = false
     @Published private(set) var loginItemNeedsApproval = false
     @Published private(set) var loginItemStatusText =
-        "Checking launch-at-login status …"
+        "Checking launch-at-login status…"
     @Published private(set) var loginItemStatusIsError = false
 
     private typealias Lifecycle = OutputLifecycle
@@ -1085,7 +1085,7 @@ final class AppModel: ObservableObject {
         pendingRenderingFailure = nil
         pendingFirstFrame = nil
         setLifecycle(.starting(epoch))
-        setStatus("Preparing the capture safely …", isError: false)
+        setStatus("Preparing the capture safely…", isError: false)
 
         var localOutput: OutputWindowController?
         var localSession: CaptureSession?
@@ -1207,7 +1207,7 @@ final class AppModel: ObservableObject {
             recoveryFailure = nil
             output.reveal()
             setStatus(
-                "Output active; waiting for the first complete frame …",
+                "Output active; waiting for the first complete frame…",
                 isError: false
             )
             lifecycleLogger.notice(
@@ -1687,21 +1687,21 @@ final class AppModel: ObservableObject {
         }
         if selectedDisplayID == nil {
             return
-                "Quietly waiting for the stored target display \"\(workingTargetIdentity.localizedName)\" …"
+                "Quietly waiting for the stored target display \"\(workingTargetIdentity.localizedName)\"…"
         }
         switch sourceKind {
         case .virtualDisplay:
-            return "Waiting for the virtual source display \"\(VirtualSource.name)\" …"
+            return "Waiting for the virtual source display \"\(VirtualSource.name)\"…"
         case .display:
             guard let identity = workingSource.display else {
                 return "No source display selected yet."
             }
-            return "Quietly waiting for the stored source display \"\(identity.localizedName)\" …"
+            return "Quietly waiting for the stored source display \"\(identity.localizedName)\"…"
         case .window:
             guard let identity = workingSource.window else {
                 return "No source window selected yet."
             }
-            return "Quietly waiting for the window \"\(identity.localizedName)\" …"
+            return "Quietly waiting for the window \"\(identity.localizedName)\"…"
         }
     }
 
@@ -1770,8 +1770,21 @@ final class AppModel: ObservableObject {
     }
 
     private func setStatus(_ text: String, isError: Bool) {
+        let isNewError = isError && (text != statusText || !statusIsError)
         statusText = text
         statusIsError = isError
+        // A change of the status line is silent for VoiceOver. Errors are worth
+        // interrupting for, so say them; progress texts are not.
+        if isNewError, !isSelfTest, didLaunch, let application = NSApp {
+            NSAccessibility.post(
+                element: application,
+                notification: .announcementRequested,
+                userInfo: [
+                    .announcement: "Error: \(text)",
+                    .priority: NSAccessibilityPriorityLevel.high.rawValue,
+                ]
+            )
+        }
     }
 
     @objc
