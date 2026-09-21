@@ -62,6 +62,9 @@ final class AppStatusItemController: NSObject, NSMenuDelegate {
 
         let menu = NSMenu()
         menu.delegate = self
+        // The icon alone does not say which app this is, so the menu opens with
+        // a small title row.
+        menu.addItem(Self.titleItem())
         menu.addItem(startItem)
         menu.addItem(stopItem)
         menu.addItem(.separator())
@@ -105,6 +108,20 @@ final class AppStatusItemController: NSObject, NSMenuDelegate {
         quitItem.target = self
         menu.addItem(quitItem)
         statusItem.menu = menu
+    }
+
+    /// "OpenPromptr 1.3.1" as the first row: a section header where the system
+    /// has one (macOS 14), otherwise a disabled item.
+    private static func titleItem() -> NSMenuItem {
+        let version =
+            Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+        let title = version.map { "OpenPromptr \($0)" } ?? "OpenPromptr"
+        if #available(macOS 14.0, *) {
+            return NSMenuItem.sectionHeader(title: title)
+        }
+        let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+        item.isEnabled = false
+        return item
     }
 
     func configure(

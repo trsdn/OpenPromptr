@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The menu bar menu opens with a small title row, "OpenPromptr" and the version,
+  so it is clear which app the icon belongs to.
+
 ## [1.3.1] - 2026-09-20
 
 ### Added
