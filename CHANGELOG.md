@@ -7,10 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
+## [1.3.2] - 2026-09-21
+
+### Added
 
 - The menu bar menu opens with a small title row, "OpenPromptr" and the version,
   so it is clear which app the icon belongs to.
+- **Settings…** (⌘,) in the menu bar menu.
+- `OpenPromptr --render-ui-snapshots <directory>` renders the control and
+  Settings windows to PNG for a visual review against the Human Interface
+  Guidelines.
+
+### Changed
+
+- Errors in the status line are announced by VoiceOver, the status line and its
+  icon are read as one text, and each section of the control window is a named
+  group.
+- The "Output running" badge keeps its text in the primary label color, and the
+  header icon follows the accent color; both were fixed colors.
+- Ellipses no longer have a space before them ("Display Settings…").
+
+### Fixed
+
+- Pressing Esc in the control window no longer stops a running output; Stop is
+  ⌘. in the Output menu.
 
 ## [1.3.1] - 2026-09-20
 
@@ -112,7 +132,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Static same-screen captures.
 - ScreenCaptureKit support on Swift 6.1.
 
-[Unreleased]: https://github.com/trsdn/OpenPromptr/compare/v1.3.1...HEAD
+[Unreleased]: https://github.com/trsdn/OpenPromptr/compare/v1.3.2...HEAD
+[1.3.2]: https://github.com/trsdn/OpenPromptr/compare/v1.3.1...v1.3.2
 [1.3.1]: https://github.com/trsdn/OpenPromptr/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/trsdn/OpenPromptr/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/trsdn/OpenPromptr/compare/v1.1.0...v1.2.0

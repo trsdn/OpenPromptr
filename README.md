@@ -155,7 +155,7 @@ the physical setup.
 1. Under **Source**, choose the type: **Virtual display**, **Display**, or
    **Window**. For Display or Window, additionally select the specific entry;
    the window list can be refreshed with the arrow icon. In virtual mode,
-   **Arrangement in Display Settings …** opens the system setting directly,
+   **Arrangement in Display Settings…** opens the system setting directly,
    where you define at which edge the invisible display is located and where the
    mouse leaves it.
 2. Select the physical **target display** for the output (default: **AAA**,

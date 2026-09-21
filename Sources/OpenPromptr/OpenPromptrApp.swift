@@ -78,6 +78,15 @@ final class AppStatusItemController: NSObject, NSMenuDelegate {
         menu.addItem(showItem)
         menu.addItem(.separator())
 
+        let settingsItem = NSMenuItem(
+            title: "Settings…",
+            action: #selector(showSettings),
+            keyEquivalent: ","
+        )
+        settingsItem.keyEquivalentModifierMask = [.command]
+        settingsItem.target = self
+        menu.addItem(settingsItem)
+
         let aboutItem = NSMenuItem(
             title: "About OpenPromptr",
             action: #selector(showAbout),
@@ -167,6 +176,20 @@ final class AppStatusItemController: NSObject, NSMenuDelegate {
     @objc
     private func showControls() {
         showControlsHandler?()
+    }
+
+    @objc
+    private func showSettings() {
+        NSApp.activate(ignoringOtherApps: true)
+        // SwiftUI's Settings scene answers to a selector that changed name in
+        // macOS 14.
+        let selector =
+            if #available(macOS 14.0, *) {
+                Selector(("showSettingsWindow:"))
+            } else {
+                Selector(("showPreferencesWindow:"))
+            }
+        NSApp.sendAction(selector, to: nil, from: nil)
     }
 
     @objc
