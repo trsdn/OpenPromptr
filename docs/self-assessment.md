@@ -60,7 +60,7 @@ Archived (the repository is active).
 - **R05** — 1.15.0 asks for a smoke kit, a documented command that checks the
   published artifact without an operator, run and recorded. `Scripts/smoke-published.sh`
   is that kit and is documented in `RELEASE_CHECKLIST.md`; it was run against
-  v1.3.0, v1.3.1 and v1.3.2 (2026-09-20 and 2026-09-21) (9 of 9 checks: checksums, updater copy identical,
+  v1.3.0 through v1.3.3 (2026-09-20 to 2026-09-22) (9 of 9 checks: checksums, updater copy identical,
   notarization stapled, Gatekeeper accepts DMG and app, signature verifies,
   bundle identifier and version, app launches and reports `OpenPromptr 1.3.0
   (64)`), and the result is in the log there. The core function is not

@@ -141,6 +141,7 @@ until one changes how the app is built, signed or packaged.
 | v1.3.0 | 2026-09-20 | pass — 9 of 9 checks; app reports `OpenPromptr 1.3.0 (64)` | AI agent |
 | v1.3.1 | 2026-09-20 | pass — 9 of 9 checks; app reports `OpenPromptr 1.3.1 (68)` | AI agent |
 | v1.3.2 | 2026-09-21 | pass — 9 of 9 checks; app reports `OpenPromptr 1.3.2 (74)` | AI agent |
+| v1.3.3 | 2026-09-22 | pass — 9 of 9 checks; app reports `OpenPromptr 1.3.3 (81)` | AI agent |
 
 ## Release security gate log
 

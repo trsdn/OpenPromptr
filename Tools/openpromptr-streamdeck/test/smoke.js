@@ -110,7 +110,15 @@ check("a key that appears is painted from the app's state, with a custom label",
     const rotation = "com.trsdn.openpromptr.rotation";
     tell({ event: "willAppear", context: "out", action: output, payload: { settings: { title: "Prompter" } } });
     tell({ event: "willAppear", context: "rot", action: rotation, payload: { settings: {} } });
-    await until(() => last("setTitle", "out") && last("setTitle", "rot"), "first paint");
+    // Not just "a setTitle arrived": the very first paint, before the API has
+    // been polled, is the "—" placeholder — wait for the one that reflects
+    // the state this test set up, or the assertions below race it.
+    await until(
+        () =>
+            last("setTitle", "out")?.payload.title === "Prompter" &&
+            last("setTitle", "rot")?.payload.title === "0°",
+        "first paint"
+    );
     assert.equal(last("setTitle", "out").payload.title, "Prompter");
     assert.equal(last("setState", "out").payload.state, 0);
     assert.equal(last("setTitle", "rot").payload.title, "0°");
