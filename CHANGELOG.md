@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.3] - 2026-09-22
+
 ### Added
 
 - The menu bar item now shows the app's own "T over a mirror line" mark
@@ -142,7 +144,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Static same-screen captures.
 - ScreenCaptureKit support on Swift 6.1.
 
-[Unreleased]: https://github.com/trsdn/OpenPromptr/compare/v1.3.2...HEAD
+[Unreleased]: https://github.com/trsdn/OpenPromptr/compare/v1.3.3...HEAD
+[1.3.3]: https://github.com/trsdn/OpenPromptr/compare/v1.3.2...v1.3.3
 [1.3.2]: https://github.com/trsdn/OpenPromptr/compare/v1.3.1...v1.3.2
 [1.3.1]: https://github.com/trsdn/OpenPromptr/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/trsdn/OpenPromptr/compare/v1.2.0...v1.3.0
