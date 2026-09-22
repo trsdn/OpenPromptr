@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Settings → Presence**: choose whether OpenPromptr shows a Dock icon, a menu
+  bar item, both (the previous fixed behavior, still the default), or neither.
+  With neither, opening the app again while it's running brings back the
+  control window. (#32)
+
 ## [1.3.2] - 2026-09-21
 
 ### Added
