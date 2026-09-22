@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- A flaky Stream Deck plugin smoke test (`test/smoke.js`) that could race the
+  placeholder title against the real first paint.
+
 ## [1.3.3] - 2026-09-22
 
 ### Added
