@@ -576,6 +576,52 @@ private struct LegacyPresetSlot: Codable {
     var configuration: TeleprompterConfiguration?
 }
 
+/// How the app presents itself while running: a Dock icon, a menu bar status
+/// item, both, or neither. Two independent facts (Dock icon shown, menu bar
+/// item shown) rather than four unrelated ones, but named as one setting
+/// because that is how a person chooses it.
+public enum AppPresence: String, Codable, CaseIterable, Sendable {
+    case dockAndMenuBar
+    case dockOnly
+    case menuBarOnly
+    case backgroundOnly
+
+    public var showsDockIcon: Bool {
+        self == .dockAndMenuBar || self == .dockOnly
+    }
+
+    public var showsMenuBarItem: Bool {
+        self == .dockAndMenuBar || self == .menuBarOnly
+    }
+
+    public var localizedName: String {
+        switch self {
+        case .dockAndMenuBar:
+            return "Dock and menu bar"
+        case .dockOnly:
+            return "Dock icon only"
+        case .menuBarOnly:
+            return "Menu bar only"
+        case .backgroundOnly:
+            return "Background only"
+        }
+    }
+
+    public var localizedExplanation: String {
+        switch self {
+        case .dockAndMenuBar:
+            return "Shown in the Dock and in the menu bar."
+        case .dockOnly:
+            return "Shown in the Dock; reach Settings from its Dock menu or app menu."
+        case .menuBarOnly:
+            return "No Dock icon; controlled from the menu bar."
+        case .backgroundOnly:
+            return
+                "No Dock icon and no menu bar icon. Open the app again while it's running to bring up its window."
+        }
+    }
+}
+
 public struct AppSettings: Codable, Equatable, Sendable {
     public static let currentSchemaVersion = 2
 
@@ -584,19 +630,22 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var autoStartOutput: Bool
     public var autoResumeOutput: Bool
     public var enableLocalAPI: Bool
+    public var presence: AppPresence
 
     public init(
         schemaVersion: Int = currentSchemaVersion,
         configuration: TeleprompterConfiguration = .init(),
         autoStartOutput: Bool = false,
         autoResumeOutput: Bool = false,
-        enableLocalAPI: Bool = false
+        enableLocalAPI: Bool = false,
+        presence: AppPresence = .dockAndMenuBar
     ) {
         self.schemaVersion = schemaVersion
         self.configuration = configuration
         self.autoStartOutput = autoStartOutput
         self.autoResumeOutput = autoResumeOutput
         self.enableLocalAPI = enableLocalAPI
+        self.presence = presence
     }
 
     public static var defaults: AppSettings {
@@ -611,6 +660,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         case autoStartOutput
         case autoResumeOutput
         case enableLocalAPI
+        case presence
     }
 
     public init(from decoder: Decoder) throws {
@@ -635,6 +685,11 @@ public struct AppSettings: Codable, Equatable, Sendable {
                 Bool.self,
                 forKey: .enableLocalAPI
             ) ?? false
+        presence =
+            try container.decodeIfPresent(
+                AppPresence.self,
+                forKey: .presence
+            ) ?? .dockAndMenuBar
 
         if let configuration = try container.decodeIfPresent(
             TeleprompterConfiguration.self,
@@ -670,6 +725,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         try container.encode(autoStartOutput, forKey: .autoStartOutput)
         try container.encode(autoResumeOutput, forKey: .autoResumeOutput)
         try container.encode(enableLocalAPI, forKey: .enableLocalAPI)
+        try container.encode(presence, forKey: .presence)
     }
 
     public func normalized() -> AppSettings {

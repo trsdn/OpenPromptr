@@ -308,6 +308,25 @@ exists (tracked in
 finds nothing to install. See [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md)
 for how a release is actually cut and published.
 
+## Presence
+
+**Settings → Presence** controls how OpenPromptr shows up while it's running:
+
+| Choice | Dock icon | Menu bar item |
+| --- | --- | --- |
+| Dock and menu bar (default) | ✓ | ✓ |
+| Dock icon only | ✓ | — |
+| Menu bar only | — | ✓ |
+| Background only | — | — |
+
+None of the four affects whether output can be started or stopped — that's
+always available from the control window, ⌘. in the Output menu while a window
+is frontmost, or the [local HTTP API](#local-http-api). With no Dock icon and
+no menu bar item, opening the app again while it's already running (double-
+clicking it in Finder, Spotlight, or `open`) brings the control window back;
+that's also true for the other three choices, in addition to the Dock icon or
+menu bar item.
+
 ## Local HTTP API
 
 For control from outside the app — a script, a Stream Deck plugin (see

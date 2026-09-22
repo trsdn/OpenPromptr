@@ -1,3 +1,4 @@
+import OpenPromptrCore
 import SwiftUI
 
 /// Preferences window (⌘,): everything that is set once and rarely touched,
@@ -7,11 +8,44 @@ struct SettingsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
+            presenceSection
             startupSection
             remoteControlSection
         }
         .padding(16)
         .frame(width: 520)
+    }
+
+    private var presenceSection: some View {
+        ControlSection(title: "Presence", systemImage: "menubar.dock.rectangle") {
+            VStack(alignment: .leading, spacing: 6) {
+                Picker(
+                    "Presence",
+                    selection: Binding(
+                        get: { model.presence },
+                        set: { model.setPresence($0) }
+                    )
+                ) {
+                    ForEach(AppPresence.allCases, id: \.rawValue) { presence in
+                        Text(presence.localizedName).tag(presence)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+
+                Text(model.presence.localizedExplanation)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+
+                if !model.presence.showsMenuBarItem {
+                    Text(
+                        "Output still starts and stops from the control window or the local HTTP API while hidden this way."
+                    )
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                }
+            }
+        }
     }
 
     private var startupSection: some View {

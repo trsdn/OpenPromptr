@@ -90,6 +90,7 @@ final class AppModel: ObservableObject {
     @Published private(set) var autoStartOutput: Bool
     @Published private(set) var autoResumeOutput: Bool
     @Published private(set) var enableLocalAPI: Bool
+    @Published private(set) var presence: AppPresence
     @Published private(set) var isRunning = false
     @Published private(set) var isBusy = false
     @Published private(set) var isRefreshingWindows = false
@@ -154,6 +155,7 @@ final class AppModel: ObservableObject {
         autoStartOutput = loaded.autoStartOutput
         autoResumeOutput = loaded.autoResumeOutput
         enableLocalAPI = loaded.enableLocalAPI
+        presence = loaded.presence
 
         let configuration = loaded.configuration
         workingSource = configuration.source
@@ -502,6 +504,16 @@ final class AppModel: ObservableObject {
     /// See issue #4: a loopback-only HTTP API so an external tool (a script,
     /// a Stream Deck plugin) can start/stop output and read status without
     /// going through the menu bar.
+    /// Whether the app shows a Dock icon, a menu bar status item, both or
+    /// neither. `AppDelegate` observes this and applies it — an AppKit
+    /// lifecycle concern that needs the window/update-manager references it
+    /// already owns, not something `AppModel` can act on itself.
+    func setPresence(_ newValue: AppPresence) {
+        presence = newValue
+        settings.presence = newValue
+        persistSettings()
+    }
+
     func setEnableLocalAPI(_ enabled: Bool) {
         enableLocalAPI = enabled
         settings.enableLocalAPI = enabled

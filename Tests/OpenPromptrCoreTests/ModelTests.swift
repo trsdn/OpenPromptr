@@ -398,6 +398,47 @@ func settingsRecoveryIsIndependent() throws {
     }
 }
 
+@Test("Presence defaults to Dock and menu bar, matching the app's old fixed behavior")
+func presenceDefaultsToDockAndMenuBar() {
+    #expect(AppSettings.defaults.presence == .dockAndMenuBar)
+}
+
+@Test("Presence derives which of the Dock icon and menu bar item are shown")
+func presenceDerivesVisibility() {
+    #expect(AppPresence.dockAndMenuBar.showsDockIcon)
+    #expect(AppPresence.dockAndMenuBar.showsMenuBarItem)
+    #expect(AppPresence.dockOnly.showsDockIcon)
+    #expect(!AppPresence.dockOnly.showsMenuBarItem)
+    #expect(!AppPresence.menuBarOnly.showsDockIcon)
+    #expect(AppPresence.menuBarOnly.showsMenuBarItem)
+    #expect(!AppPresence.backgroundOnly.showsDockIcon)
+    #expect(!AppPresence.backgroundOnly.showsMenuBarItem)
+}
+
+@Test("Every presence survives the persistence codec")
+func presenceSurvivesCodec() throws {
+    for presence in AppPresence.allCases {
+        let settings = AppSettings(presence: presence)
+        #expect(
+            try AppSettingsCodec.decode(
+                AppSettingsCodec.encode(settings)
+            ) == settings)
+    }
+}
+
+@Test("Settings saved before this setting existed default to Dock and menu bar")
+func presenceDefaultsForOlderSettings() throws {
+    let data = Data(
+        """
+        {
+            "schemaVersion": 2,
+            "configuration": { "source": { "kind": "virtualDisplay" } }
+        }
+        """.utf8)
+    let decoded = try AppSettingsCodec.decode(data)
+    #expect(decoded.presence == .dockAndMenuBar)
+}
+
 @Test("Window identity resolves only when it is unambiguous")
 func windowIdentityResolution() {
     let deck = WindowIdentity(

@@ -1,4 +1,6 @@
 import AppKit
+import Combine
+import OpenPromptrCore
 import SwiftUI
 
 @MainActor
@@ -13,6 +15,33 @@ final class AppStatusItemController: NSObject, NSMenuDelegate {
     private let automaticUpdatesItem: NSMenuItem
     private let installUpdateItem: NSMenuItem
     private let laterUpdateItem: NSMenuItem
+
+    /// The Dock icon's own "T over a mirror line" mark, generated alongside
+    /// it by `Scripts/make-icon.swift` (`Resources/MenuBarIcon.png`) so the
+    /// menu bar item is recognizably the same app rather than an unrelated
+    /// SF Symbol. `isTemplate` lets macOS recolor it for light mode, dark
+    /// mode and the highlighted state.
+    private static func menuBarIcon() -> NSImage {
+        guard
+            let url = Bundle.main.url(forResource: "MenuBarIcon", withExtension: "png"),
+            let image = NSImage(contentsOf: url)
+        else {
+            // The bare executable from `swift build` (no app bundle, no
+            // Resources) has nothing to load; the packaged app always does.
+            let fallback =
+                NSImage(
+                    systemSymbolName: "rectangle.on.rectangle.angled",
+                    accessibilityDescription: "OpenPromptr"
+                ) ?? NSImage()
+            fallback.isTemplate = true
+            return fallback
+        }
+        let aspectRatio = image.size.width / image.size.height
+        image.size = NSSize(width: 18 * aspectRatio, height: 18)
+        image.isTemplate = true
+        image.accessibilityDescription = "OpenPromptr"
+        return image
+    }
 
     override init() {
         statusItem = NSStatusBar.system.statusItem(
@@ -50,10 +79,7 @@ final class AppStatusItemController: NSObject, NSMenuDelegate {
         )
         super.init()
 
-        statusItem.button?.image = NSImage(
-            systemSymbolName: "rectangle.on.rectangle.angled",
-            accessibilityDescription: "OpenPromptr"
-        )
+        statusItem.button?.image = Self.menuBarIcon()
         statusItem.button?.toolTip = "OpenPromptr"
 
         startItem.target = self
@@ -225,14 +251,30 @@ final class AppStatusItemController: NSObject, NSMenuDelegate {
     private func quit() {
         NSApplication.shared.terminate(nil)
     }
+
+    deinit {
+        // Explicit removal rather than relying on dealloc: this instance is
+        // discarded whenever presence changes to a mode without a menu bar
+        // item, and a status item left behind would sit in the menu bar with
+        // nothing behind it. The type is @MainActor, but `deinit` itself is
+        // not implicitly isolated.
+        MainActor.assumeIsolated {
+            NSStatusBar.system.removeStatusItem(statusItem)
+        }
+    }
 }
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     weak var model: AppModel?
+    private weak var updates: UpdateManager?
     private var terminationPending = false
-    private let statusItemController = AppStatusItemController()
+    /// Present only while the current presence includes a menu bar item;
+    /// recreated whenever that becomes true again, since a removed
+    /// `NSStatusItem` cannot be brought back.
+    private var statusItemController: AppStatusItemController?
     private var showControlsHandler: (() -> Void)?
+    private var presenceSubscription: AnyCancellable?
 
     func configure(
         model: AppModel,
@@ -240,12 +282,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         showControls: @escaping () -> Void
     ) {
         self.model = model
+        self.updates = updates
         showControlsHandler = showControls
-        statusItemController.configure(
-            model: model,
-            updates: updates,
-            showControls: showControls
+        // Fires immediately with the current value, so the persisted choice
+        // takes effect as soon as the model exists, then again on every
+        // change made in Settings.
+        presenceSubscription = model.$presence.sink { [weak self] presence in
+            self?.apply(presence)
+        }
+    }
+
+    private func apply(_ presence: AppPresence) {
+        NSApplication.shared.setActivationPolicy(
+            presence.showsDockIcon ? .regular : .accessory
         )
+
+        if presence.showsMenuBarItem {
+            guard statusItemController == nil else {
+                return
+            }
+            let controller = AppStatusItemController()
+            if let model, let updates, let showControlsHandler {
+                controller.configure(
+                    model: model,
+                    updates: updates,
+                    showControls: showControlsHandler
+                )
+            }
+            statusItemController = controller
+        } else {
+            statusItemController = nil
+        }
     }
 
     func showControls() {
@@ -253,6 +320,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Corrected to the persisted choice moments later, once `configure`
+        // runs with the model; a regular app with no Dock icon flash yet is
+        // the safer default for that brief window than the reverse.
         NSApplication.shared.setActivationPolicy(.regular)
         NSApplication.shared.activate(ignoringOtherApps: true)
     }
