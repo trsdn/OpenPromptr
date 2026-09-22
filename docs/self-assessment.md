@@ -2,8 +2,8 @@
 
 Assessed against the
 [trsdn Repository Quality Standard](https://github.com/trsdn/.github/blob/main/docs/repository-quality-standard.md)
-v1.15.0 on 2026-09-20, by an AI agent reading the repository, the GitHub API and
-the published v1.3.0 release. The machine-readable result is
+v1.21.0 on 2026-09-22, by an AI agent reading the repository, the GitHub API and
+the published v1.3.2 release. The machine-readable result is
 [`.github/conformance.yml`](../.github/conformance.yml); this document is the
 evidence for every criterion that isn't a clean pass. A clean pass isn't
 repeated here — see `standard.yml`'s catalog for what each ID means.
@@ -15,14 +15,37 @@ Overall state: **Healthy**: no criterion is `Fail` and none is `Partial`.
 Baseline, Public, Software, Package And Release, Product Identity, Agent
 Readiness, Language And Localization, Accessibility, Data Protection And
 Privacy, and Published Site. OpenPromptr ships a product (a signed macOS app)
-to an audience that never needs to open the repository, which is what
-triggers Published Site under
-[decision 0009](https://github.com/trsdn/.github/blob/main/docs/decisions/0009-published-sites-and-content-boundaries.md)
-even though this isn't a "site repo" in the usual sense.
+that a non-developer installs and runs by name, which is what triggers
+Published Site under the standard's
+["Published Sites"](https://github.com/trsdn/.github/blob/main/docs/repository-quality-standard.md#published-sites)
+section and
+[decision 0020](https://github.com/trsdn/.github/blob/main/docs/decisions/0020-public-applications-need-a-site.md):
+that profile now applies whether or not a site exists yet, and OpenPromptr
+already publishes one at `docs/`, served by GitHub Pages.
 
 Not claimed: Documentation (the primary product is the app, not documentation
 or content), Deployable (a distributed desktop app, not a deployed service),
 Archived (the repository is active).
+
+## New since the 1.15.0 record
+
+- **P12** — pass. Both Dependabot alerts and Dependabot security updates are
+  enabled (`gh api repos/trsdn/OpenPromptr/vulnerability-alerts` and
+  `.../automated-security-fixes`, both `204`).
+- **P13** — pass. A CodeQL default setup is configured and its state is
+  `active` (confirmed by `scripts/assess.py` and
+  `gh api repos/trsdn/OpenPromptr/code-scanning/default-setup`), covering
+  Swift, JavaScript/TypeScript and GitHub Actions. The `CodeQL` check on the
+  latest runs of `main` is green.
+- **R09** — pass. `RELEASE_CHECKLIST.md` now documents the release security
+  gate (a new step 5) and a "Release security gate log" table, on the same
+  convention as the existing smoke-test log. Both parts read the checks this
+  repository already runs continuously: GitHub secret scanning (`S05`) and
+  Dependabot alerts (`P12`). At assessment time, both are empty for `main`
+  (`gh api repos/trsdn/OpenPromptr/secret-scanning/alerts?state=open` and
+  `.../dependabot/alerts?state=open` with `severity=critical`/`high`), and the
+  log records that retroactively for the latest release, `v1.3.2`
+  (commit `649471a`).
 
 ## Resolved since the last pass
 
@@ -124,3 +147,10 @@ Archived (the repository is active).
   or a physical keyboard walkthrough.
 - **W01** — "repeatable, documented process" here is simply: GitHub Pages
   serves `docs/` from `main` directly, no build step and no vendored assets.
+  GitHub's own automatic `pages build and deployment` run for the latest
+  commit (`1cca2e1`, 2026-09-21T21:10) failed with a transient `403` uploading
+  the Pages artifact; the run before it succeeded and the site is live and
+  serving the previous commit's content. This is a platform-side hiccup in a
+  workflow the repository does not own or configure, not a defect in the
+  publishing process itself, and it needs no fix here beyond a retry (a push,
+  or `gh workflow run`) whenever the next commit lands.
