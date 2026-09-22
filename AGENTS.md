@@ -107,6 +107,7 @@ Do not hand-edit these:
 | Path | Produced by | Source of truth |
 | --- | --- | --- |
 | `Resources/AppIcon.icns` | `swift Scripts/make-icon.swift`, called by `build-app.sh` | `Scripts/make-icon.swift` |
+| `Resources/MenuBarIcon.png` | `swift Scripts/make-icon.swift`, called by `build-app.sh` | `Scripts/make-icon.swift` |
 | `dist/` | `build-app.sh` | — (git-ignored) |
 | `.build/` | SwiftPM | — (git-ignored) |
 | `docs/assets/*` (once vendored) | copied from `trsdn/design-system` | `docs/assets/VENDORED.md` — re-vendor from a tag, never hand-edit |

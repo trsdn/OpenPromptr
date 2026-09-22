@@ -102,6 +102,14 @@ else
         "${ICON_FILE}" >&2
 fi
 
+MENU_BAR_ICON_FILE="${SCRIPT_DIR}/Resources/MenuBarIcon.png"
+if [[ -f "${MENU_BAR_ICON_FILE}" ]]; then
+    install -m 0644 "${MENU_BAR_ICON_FILE}" "${APP_DIR}/Contents/Resources/MenuBarIcon.png"
+else
+    printf 'Warning: %s is missing. Generate it with: swift Scripts/make-icon.swift\n' \
+        "${MENU_BAR_ICON_FILE}" >&2
+fi
+
 plutil -lint "${APP_DIR}/Contents/Info.plist"
 
 printf 'Signing app with identity "%s" …\n' "${SIGN_IDENTITY}"

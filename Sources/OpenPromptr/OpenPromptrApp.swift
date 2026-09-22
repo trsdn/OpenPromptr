@@ -16,6 +16,33 @@ final class AppStatusItemController: NSObject, NSMenuDelegate {
     private let installUpdateItem: NSMenuItem
     private let laterUpdateItem: NSMenuItem
 
+    /// The Dock icon's own "T over a mirror line" mark, generated alongside
+    /// it by `Scripts/make-icon.swift` (`Resources/MenuBarIcon.png`) so the
+    /// menu bar item is recognizably the same app rather than an unrelated
+    /// SF Symbol. `isTemplate` lets macOS recolor it for light mode, dark
+    /// mode and the highlighted state.
+    private static func menuBarIcon() -> NSImage {
+        guard
+            let url = Bundle.main.url(forResource: "MenuBarIcon", withExtension: "png"),
+            let image = NSImage(contentsOf: url)
+        else {
+            // The bare executable from `swift build` (no app bundle, no
+            // Resources) has nothing to load; the packaged app always does.
+            let fallback =
+                NSImage(
+                    systemSymbolName: "rectangle.on.rectangle.angled",
+                    accessibilityDescription: "OpenPromptr"
+                ) ?? NSImage()
+            fallback.isTemplate = true
+            return fallback
+        }
+        let aspectRatio = image.size.width / image.size.height
+        image.size = NSSize(width: 18 * aspectRatio, height: 18)
+        image.isTemplate = true
+        image.accessibilityDescription = "OpenPromptr"
+        return image
+    }
+
     override init() {
         statusItem = NSStatusBar.system.statusItem(
             withLength: NSStatusItem.squareLength
@@ -52,10 +79,7 @@ final class AppStatusItemController: NSObject, NSMenuDelegate {
         )
         super.init()
 
-        statusItem.button?.image = NSImage(
-            systemSymbolName: "rectangle.on.rectangle.angled",
-            accessibilityDescription: "OpenPromptr"
-        )
+        statusItem.button?.image = Self.menuBarIcon()
         statusItem.button?.toolTip = "OpenPromptr"
 
         startItem.target = self
