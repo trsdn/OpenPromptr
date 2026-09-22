@@ -58,8 +58,22 @@ When one changes, change the others in the same pull request.
    app already holds Screen Recording permission; otherwise a manual check —
    pick each source type in turn, start output, and confirm the physical
    target display shows the mirrored/rotated image correctly.
-5. Merge to `main`, then tag `v<version>` and push the tag.
-6. Request the notarized build from a checkout of the broker:
+5. **Release security gate.** Before tagging, confirm the commit that will be
+   tagged has no open secret-scanning alert and no open critical or high
+   Dependabot alert:
+
+   ```bash
+   gh api repos/trsdn/OpenPromptr/secret-scanning/alerts?state=open
+   gh api 'repos/trsdn/OpenPromptr/dependabot/alerts?state=open&severity=critical'
+   gh api 'repos/trsdn/OpenPromptr/dependabot/alerts?state=open&severity=high'
+   ```
+
+   Both empty is a pass. GitHub secret scanning and Dependabot alerts run
+   continuously on this repository (`S05`, `P12`), so this step reads their
+   current state rather than running a separate scanner. Add a row to the
+   table below with the result before tagging.
+6. Merge to `main`, then tag `v<version>` and push the tag.
+7. Request the notarized build from a checkout of the broker:
 
    ```bash
    scripts/request.sh openpromptr v<version> --publish
@@ -127,6 +141,16 @@ until one changes how the app is built, signed or packaged.
 | v1.3.0 | 2026-09-20 | pass — 9 of 9 checks; app reports `OpenPromptr 1.3.0 (64)` | AI agent |
 | v1.3.1 | 2026-09-20 | pass — 9 of 9 checks; app reports `OpenPromptr 1.3.1 (68)` | AI agent |
 | v1.3.2 | 2026-09-21 | pass — 9 of 9 checks; app reports `OpenPromptr 1.3.2 (74)` | AI agent |
+
+## Release security gate log
+
+Step 5's result for the commit each release was tagged from. A checked-but-open
+entry means the alert had a recorded reason (revoked, false positive, fix in
+progress) rather than blocking the tag.
+
+| Version | Commit | Date checked | Secret scanning | Dependabot (critical/high) | Checked by |
+| --- | --- | --- | --- | --- | --- |
+| v1.3.2 | `649471a` | 2026-09-22 | 0 open alerts | 0 open alerts | AI agent (retroactive, `R09` reassessment) |
 
 ## Testing the updater
 
