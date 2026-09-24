@@ -176,6 +176,12 @@ final class AppModel: ObservableObject {
             name: NSApplication.didBecomeActiveNotification,
             object: nil
         )
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self,
+            selector: #selector(systemDidWake),
+            name: NSWorkspace.didWakeNotification,
+            object: nil
+        )
 
         refreshDisplaySnapshot()
         updateIdleStatus()
@@ -187,6 +193,7 @@ final class AppModel: ObservableObject {
         selfTestTimeoutTask?.cancel()
         recoveryTask?.cancel()
         NotificationCenter.default.removeObserver(self)
+        NSWorkspace.shared.notificationCenter.removeObserver(self)
     }
 
     var canStart: Bool {
@@ -1841,6 +1848,31 @@ final class AppModel: ObservableObject {
     private func applicationDidBecomeActive(_ notification: Notification) {
         updatePermissionStatus()
         refreshLoginItemStatus()
+    }
+
+    @objc
+    private func systemDidWake(_ notification: Notification) {
+        Task { @MainActor [weak self] in
+            await self?.recreateVirtualSourceAfterWake()
+        }
+    }
+
+    /// Proactively refreshes an idle virtual source right after the Mac
+    /// wakes, so a manual "Start output" does not have to burn a doomed
+    /// attempt against a display ID ScreenCaptureKit already dropped during
+    /// sleep. Left alone while output is starting or running: a live
+    /// `CaptureSession` still references the old display, and pulling it
+    /// out from under that session belongs to the same failure-driven path
+    /// `startResolvedOutput` already uses (`recreateVirtualSource()`), not
+    /// to a notification handler racing it.
+    private func recreateVirtualSourceAfterWake() async {
+        guard virtualDisplayHost != nil || virtualDisplayID != nil,
+            captureSession == nil,
+            startingCaptureSession == nil
+        else {
+            return
+        }
+        await recreateVirtualSource()
     }
 }
 
