@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Starting output after the Mac woke from standby could fail with
+  "ScreenCaptureKit did not find the source display with ID N" and exhaust
+  all 3 automatic-recovery attempts, when using the virtual display source.
+  The virtual source is now recreated when ScreenCaptureKit reports it
+  missing, and proactively refreshed on system wake while output is idle.
 - A flaky Stream Deck plugin smoke test (`test/smoke.js`) that could race the
   placeholder title against the real first paint.
 
