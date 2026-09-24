@@ -1868,7 +1868,8 @@ final class AppModel: ObservableObject {
     private func recreateVirtualSourceAfterWake() async {
         guard virtualDisplayHost != nil || virtualDisplayID != nil,
             captureSession == nil,
-            startingCaptureSession == nil
+            startingCaptureSession == nil,
+            lifecycle == .idle
         else {
             return
         }
