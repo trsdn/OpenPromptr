@@ -343,6 +343,19 @@ final class AppModel: ObservableObject {
         refreshDisplaySnapshot()
     }
 
+    /// Discards a virtual source display whose `CGDirectDisplayID`
+    /// ScreenCaptureKit no longer recognizes and creates a fresh one in its
+    /// place. The private CGVirtualDisplay does not reliably survive a
+    /// sleep/wake cycle: its ID can still read back as "online" via
+    /// `CGGetOnlineDisplayList`, but it silently drops out of
+    /// ScreenCaptureKit's `SCShareableContent`, so every further attempt
+    /// against the same ID fails identically — see
+    /// `DisplayResolutionError.screenCaptureSourceUnavailable`.
+    private func recreateVirtualSource() async {
+        releaseVirtualSource()
+        await ensureVirtualSource()
+    }
+
     func selectSourceKind(_ kind: CaptureSourceKind) {
         guard kind != sourceKind else {
             return
@@ -1258,8 +1271,19 @@ final class AppModel: ObservableObject {
             }
 
             refreshDisplaySnapshot()
+            let failureKind = Self.startFailureKind(of: startError)
+            if sourceKind == .virtualDisplay, failureKind.requiresVirtualSourceRecreation {
+                await recreateVirtualSource()
+            }
+            guard epoch == operationEpoch else {
+                if lifecycle == .starting(epoch) {
+                    setLifecycle(.idle)
+                }
+                await reconcileOutput()
+                return
+            }
             let response = StartFailureResponse.decide(
-                Self.startFailureKind(of: startError),
+                failureKind,
                 targetIsResolved: resolvedTarget != nil,
                 hasPendingRecovery: recoveryFailure != nil
             )
