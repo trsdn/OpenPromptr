@@ -79,6 +79,18 @@ public enum StartFailureKind: Equatable, Sendable {
             return false
         }
     }
+
+    /// Whether recovering from this failure needs to discard the cached
+    /// virtual source display and create a new one, rather than simply
+    /// retrying with the same `CGDirectDisplayID`. True only for
+    /// `screenCaptureSourceUnavailable`: the case observed after the Mac
+    /// wakes from sleep, where the private CGVirtualDisplay silently drops
+    /// out of ScreenCaptureKit's shareable content while its ID still reads
+    /// back as "online" at the CoreGraphics level, so a same-ID retry fails
+    /// identically every time.
+    public var requiresVirtualSourceRecreation: Bool {
+        self == .screenCaptureSourceUnavailable
+    }
 }
 
 /// What to do after a start failed.

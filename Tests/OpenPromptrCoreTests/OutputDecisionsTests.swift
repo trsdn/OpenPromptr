@@ -67,6 +67,19 @@ func transientStartFailures() {
     #expect(permanent.allSatisfy { !$0.isTransient })
 }
 
+@Test(
+    "Only a ScreenCaptureKit-side miss on the cached ID asks for the virtual source to be recreated"
+)
+func onlyScreenCaptureSourceUnavailableRequiresRecreation() {
+    let needsRecreation: [StartFailureKind] = [.screenCaptureSourceUnavailable]
+    let doesNotNeedRecreation: [StartFailureKind] = [
+        .virtualSourceUnavailable, .sourceDisplayUnavailable, .sourceWindowUnavailable,
+        .targetDisplayUnavailable, .configurationChanged, .sourceIsTarget, .other,
+    ]
+    #expect(needsRecreation.allSatisfy { $0.requiresVirtualSourceRecreation })
+    #expect(doesNotNeedRecreation.allSatisfy { !$0.requiresVirtualSourceRecreation })
+}
+
 @Test("A missing monitor is waited out quietly, never reported as a failed start")
 func missingMonitorWaitsQuietly() {
     // Even when the target still looks resolved by the time the error is handled.
