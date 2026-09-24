@@ -121,6 +121,10 @@ final class AppModel: ObservableObject {
     /// host only runs while the virtual display is actually the source.
     private var virtualDisplayHost: VirtualDisplayHostProcess?
     private var virtualDisplayID: CGDirectDisplayID?
+    /// Set for the duration of `recreateVirtualSource()`, so `reconcileOutput`
+    /// can tell a legitimate, in-progress recreation apart from a genuine
+    /// failure while `virtualDisplayID` is transiently `nil`.
+    private var virtualSourceRecreateInFlight = false
     private var localAPIServer: LocalAPIServer?
     private var workingSource: CaptureSourceSelection
     private var workingTargetIdentity: PersistentDisplayIdentity?
@@ -359,6 +363,8 @@ final class AppModel: ObservableObject {
     /// against the same ID fails identically — see
     /// `DisplayResolutionError.screenCaptureSourceUnavailable`.
     private func recreateVirtualSource() async {
+        virtualSourceRecreateInFlight = true
+        defer { virtualSourceRecreateInFlight = false }
         releaseVirtualSource()
         await ensureVirtualSource()
     }
@@ -990,6 +996,11 @@ final class AppModel: ObservableObject {
         }
 
         if usesVirtualSource, virtualDisplayID == nil {
+            guard !virtualSourceRecreateInFlight else {
+                setLifecycle(.waiting)
+                setStatus(waitingStatusText, isError: false)
+                return
+            }
             let message =
                 "The virtual source display could not be created (private API unavailable)."
             if lifecycle == .running || captureSession != nil {
