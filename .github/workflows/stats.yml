@@ -20,7 +20,7 @@ jobs:
   stats:
     permissions:
       contents: write
-    uses: trsdn/.github/.github/workflows/repo-stats.yml@38969dfb6575240ff1c7096672e503022aa0910a # main
+    uses: trsdn/.github/.github/workflows/repo-stats.yml@91e111bd0f462be7d5f817ec306cbc457066107b # main
     with:
       output-dir: .github/stats
       theme: both
