@@ -17,7 +17,7 @@ let package = Package(
         // Pinned exactly: the notarization broker builds with
         // `--only-use-versions-from-resolved-file` against its own copy of
         // Package.resolved.
-        .package(url: "https://github.com/mxcl/AppUpdater.git", exact: "4.1.2"),
+        .package(url: "https://github.com/mxcl/AppUpdater.git", exact: "4.2.0"),
         .package(url: "https://github.com/httpswift/swifter.git", exact: "1.5.0"),
     ],
     targets: [
