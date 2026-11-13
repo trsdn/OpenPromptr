@@ -7,8 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.4] - 2026-11-13
+
+### Changed
+
+- The virtual source is created only after the saved physical target is
+  connected and then stays alive across source changes for the rest of the app
+  run. This avoids repeatedly hot-plugging a display and rearranging physical
+  monitors.
+
 ### Fixed
 
+- The virtual display now advertises exactly its 1920×1080 framebuffer instead
+  of reserving an unused 4096×2304 surface in WindowServer, and shutdown waits
+  for the host to release the display before continuing.
+- Frame delivery to `AVSampleBufferDisplayLayer` is coalesced onto the main
+  actor, fixing the stricter isolation enforced by Xcode 27.2 without allowing
+  capture frames to queue without bound.
 - Starting output after the Mac woke from standby could fail with
   "ScreenCaptureKit did not find the source display with ID N" and exhaust
   all 3 automatic-recovery attempts, when using the virtual display source.
