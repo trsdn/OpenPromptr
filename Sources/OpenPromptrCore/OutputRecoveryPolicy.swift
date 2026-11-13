@@ -32,7 +32,8 @@ public struct OutputRecoveryPolicy: Sendable {
 
     public mutating func didStop(at uptime: Double) {
         if let firstFrameUptime,
-           uptime - firstFrameUptime >= Self.stableInterval {
+            uptime - firstFrameUptime >= Self.stableInterval
+        {
             attemptCount = 0
         }
         firstFrameUptime = nil

@@ -138,9 +138,23 @@ private func drawArtwork(in context: CGContext) {
     }
 
     // Mirror line.
-    let lineWidth = letterHeight * 1.45
     context.setFillColor(color(0x8FC2FF, 0.85))
-    context.addPath(CGPath(
+    context.addPath(mirrorLinePath())
+    context.fillPath()
+
+    // Upright glyph on top of everything.
+    context.setFillColor(color(0xFFFFFF))
+    context.addPath(upright)
+    context.fillPath()
+
+    context.restoreGState()
+}
+
+/// The mirror line, as its own path — shared by the full artwork and the menu
+/// bar glyph so the two never quietly drift apart.
+private func mirrorLinePath() -> CGPath {
+    let lineWidth = letterHeight * 1.45
+    return CGPath(
         roundedRect: rect(
             x: (canvas - lineWidth) / 2,
             top: axis - 5,
@@ -150,15 +164,76 @@ private func drawArtwork(in context: CGContext) {
         cornerWidth: 5,
         cornerHeight: 5,
         transform: nil
-    ))
-    context.fillPath()
+    )
+}
 
-    // Upright glyph on top of everything.
-    context.setFillColor(color(0xFFFFFF))
-    context.addPath(upright)
+/// Just the "T" over the mirror line, solid black, no reflection, no
+/// background plate. Menu bar icons are template images — macOS recolors the
+/// opaque black for light mode, dark mode and the highlighted state — and are
+/// drawn small enough that the reflection's soft fade, legible at 1024pt,
+/// would not survive scaling down to menu bar size. Reusing the Dock icon's
+/// letter and line at their own proportions is the point: recognizable as the
+/// same mark, not a different one that happens to share an app.
+private func drawMenuBarGlyph(in context: CGContext) {
+    context.setShouldAntialias(true)
+    context.setFillColor(color(0x000000))
+    context.addPath(mirrorLinePath())
+    context.addPath(letterT(top: letterTop, height: letterHeight))
     context.fillPath()
+}
 
-    context.restoreGState()
+/// The glyph's own bounding box, with a little breathing room. Computed from
+/// the same paths `drawMenuBarGlyph` fills rather than typed out by hand, so
+/// a change to the letter or the layout can't silently drift out of sync with
+/// its crop.
+private func menuBarGlyphBounds() -> CGRect {
+    let padding: CGFloat = 40
+    return letterT(top: letterTop, height: letterHeight).boundingBoxOfPath
+        .union(mirrorLinePath().boundingBoxOfPath)
+        .insetBy(dx: -padding, dy: -padding)
+}
+
+private func renderMenuBarIcon(to url: URL) throws {
+    guard
+        let context = CGContext(
+            data: nil,
+            width: Int(canvas),
+            height: Int(canvas),
+            bitsPerComponent: 8,
+            bytesPerRow: 0,
+            space: sRGB,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        )
+    else {
+        throw CocoaError(.fileWriteUnknown)
+    }
+    drawMenuBarGlyph(in: context)
+
+    // `CGPath`/`CGContext` use a bottom-left origin; `CGImage.cropping(to:)`
+    // uses a top-left one. Converting here, once, is cheaper than getting it
+    // wrong at every call site.
+    let bounds = menuBarGlyphBounds()
+    let topLeftBounds = CGRect(
+        x: bounds.minX,
+        y: canvas - bounds.maxY,
+        width: bounds.width,
+        height: bounds.height
+    )
+    guard let full = context.makeImage(),
+        let cropped = full.cropping(to: topLeftBounds),
+        let destination = CGImageDestinationCreateWithURL(
+            url as CFURL,
+            UTType.png.identifier as CFString,
+            1,
+            nil
+        )
+    else {
+        throw CocoaError(.fileWriteUnknown)
+    }
+    CGImageDestinationAddImage(destination, cropped, nil)
+    guard CGImageDestinationFinalize(destination) else {
+        throw CocoaError(.fileWriteUnknown)
+    }
 }
 
 private func renderPNG(size: Int, to url: URL) throws {
@@ -240,4 +315,10 @@ guard iconutil.terminationStatus == 0 else {
 }
 
 try FileManager.default.removeItem(at: iconset)
+
+try renderMenuBarIcon(
+    to: repositoryRoot
+        .appendingPathComponent("Resources")
+        .appendingPathComponent("MenuBarIcon.png")
+)
 print("Resources/AppIcon.icns was generated.")

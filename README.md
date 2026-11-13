@@ -4,10 +4,11 @@
 
 # OpenPromptr
 
-[![CI](https://github.com/trsdn/OpenPromptr/actions/workflows/ci.yml/badge.svg)](https://github.com/trsdn/OpenPromptr/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/github/license/trsdn/OpenPromptr)](LICENSE)
 [![Platform: macOS 13+](https://img.shields.io/badge/Platform-macOS%2013%2B-lightgrey.svg)](#requirements)
-[![Swift 6.1](https://img.shields.io/badge/Swift-6.1-orange.svg)](Package.swift)
+[![CI](https://github.com/trsdn/OpenPromptr/actions/workflows/ci.yml/badge.svg)](https://github.com/trsdn/OpenPromptr/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/trsdn/OpenPromptr)](https://github.com/trsdn/OpenPromptr/releases/latest)
+[![Conformance](.github/badges/conformance.svg)](.github/conformance.yml)
 
 </div>
 
@@ -32,9 +33,11 @@ created.
 OpenPromptr combines the earlier *Display Transformer* (display source) and
 *Teleprompter Mirror* (virtual source) in one program and adds Window mode.
 
-There are no third-party packages or permanently installed daemons. Only in
-**Virtual display** mode, a second instance of the same signed binary runs
-headless as a local display host while the app is running.
+There are no permanently installed daemons. Only in **Virtual display** mode,
+a second instance of the same signed binary runs headless as a local display
+host while the app is running. The only third-party code is
+[AppUpdater](https://github.com/mxcl/AppUpdater) (see "Checking for
+updates" below).
 
 ## The virtual source display
 
@@ -97,16 +100,23 @@ the invisible virtual display.
 - Xcode or Command Line Tools with Swift 6
 - Screen Recording permission for the built app bundle
 
+## Versioning and language
+
+Releases are tagged `vMAJOR.MINOR.PATCH` and follow
+[Semantic Versioning](https://semver.org/spec/v2.0.0.html): a patch release only
+fixes bugs, a minor release adds behavior without breaking what exists, and a
+major release may change or remove it. That covers the app, its local HTTP API
+and the Stream Deck plugin. Every version's changes are in
+[`CHANGELOG.md`](CHANGELOG.md).
+
+The app's interface is **English only**; there are no localizations and none are
+planned.
+
 ## Building and testing
 
-```bash
-git clone https://github.com/trsdn/OpenPromptr.git
-cd OpenPromptr
-swift test
-./build-app.sh
-```
-
-The script creates `dist/OpenPromptr.app`. It automatically prefers an
+Clone the repository, then build and validate with the commands in
+[`AGENTS.md`](AGENTS.md#build--validate) — that is their one home.
+`./build-app.sh` creates `dist/OpenPromptr.app`. It automatically prefers an
 available identity of type **Developer ID Application**, falls back to **Apple
 Development**, and only falls back to an ad-hoc signature with a warning if no
 stable identity is available. There is no hard-coded team or certificate
@@ -152,7 +162,7 @@ the physical setup.
 1. Under **Source**, choose the type: **Virtual display**, **Display**, or
    **Window**. For Display or Window, additionally select the specific entry;
    the window list can be refreshed with the arrow icon. In virtual mode,
-   **Arrangement in Display Settings …** opens the system setting directly,
+   **Arrangement in Display Settings…** opens the system setting directly,
    where you define at which edge the invisible display is located and where the
    mouse leaves it.
 2. Select the physical **target display** for the output (default: **AAA**,
@@ -281,6 +291,86 @@ Disabling recovery during healthy output leaves that output running.
 Lifecycle logs record stop causes, error domains/codes, retry scheduling,
 cancellation, and results; potentially sensitive error text is private.
 
+## Checking for updates
+
+OpenPromptr checks GitHub Releases for this repository once a day (waking
+hourly, so a Mac that slept through a plain 24-hour timer doesn't miss a day)
+using [AppUpdater](https://github.com/mxcl/AppUpdater). A found update is
+downloaded and validated in the background — this is the only network access
+the app makes, and the only data involved is the request itself (no telemetry,
+no account, no identifying information sent beyond what a normal HTTPS request
+to GitHub implies). **Check for Updates Automatically** in the status menu or
+the app's Update menu turns this off; **Check for Updates…** always checks
+once regardless of that setting.
+
+Installing an update replaces the running app and relaunches it, so it is
+**never done automatically and never offered while output is running** — a
+teleprompter must not restart mid-talk. Stop output first, then install from
+the status menu or the Update menu.
+
+Only Developer ID-signed releases from this project's own signing identity are
+accepted; nothing else can be installed this way. Until a signed release
+exists (tracked in
+[issue #7](https://github.com/trsdn/OpenPromptr/issues/7)), a check simply
+finds nothing to install. See [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md)
+for how a release is actually cut and published.
+
+## Presence
+
+**Settings → Presence** controls how OpenPromptr shows up while it's running:
+
+| Choice | Dock icon | Menu bar item |
+| --- | --- | --- |
+| Dock and menu bar (default) | ✓ | ✓ |
+| Dock icon only | ✓ | — |
+| Menu bar only | — | ✓ |
+| Background only | — | — |
+
+None of the four affects whether output can be started or stopped — that's
+always available from the control window, ⌘. in the Output menu while a window
+is frontmost, or the [local HTTP API](#local-http-api). With no Dock icon and
+no menu bar item, opening the app again while it's already running (double-
+clicking it in Finder, Spotlight, or `open`) brings the control window back;
+that's also true for the other three choices, in addition to the Dock icon or
+menu bar item.
+
+## Local HTTP API
+
+For control from outside the app — a script, a Stream Deck plugin (see
+[`Tools/openpromptr-streamdeck`](Tools/openpromptr-streamdeck), for OpenDeck
+and Stream Deck) — since the menu bar isn't reachable that way. Off by default; enable **Enable
+local HTTP API** under **Remote control** in the Settings window (⌘,).
+
+- Binds `127.0.0.1` only; never reachable from the network.
+- A random token is generated on every launch and published, with the
+  bound port, to
+  `~/Library/Application Support/com.github.trsdn.OpenPromptr/local-api.json`
+  (mode 0600). **Reveal Connection Info in Finder** in the same section
+  opens it directly.
+- Every request needs `Authorization: Bearer <token>`. A request carrying
+  an `Origin` header — including from DNS-rebinding attempts — is rejected
+  outright, regardless of its value.
+- Actions are fire-and-forget: a `POST` returns `{"ok": true}` immediately
+  without waiting for the change to finish; poll `GET /v1/state` to see the
+  result, the same way a Stream Deck button would.
+
+| Endpoint | Effect |
+| --- | --- |
+| `GET /v1/state` | Current status, source, target display, and transform |
+| `POST /v1/output/start` | Start output |
+| `POST /v1/output/stop` | Stop output |
+| `POST /v1/output/toggle` | Start or stop, whichever applies |
+| `POST /v1/transform` `{"rotation":180,"mirrorH":true}` | Patch the transform — any subset of `rotation`/`mirrorH`/`mirrorV` |
+| `POST /v1/display` `{"id":3}` | Select the target display by ID (see `GET /v1/state`'s `display.id`) |
+
+```bash
+API=$(cat ~/Library/Application\ Support/com.github.trsdn.OpenPromptr/local-api.json)
+PORT=$(python3 -c "import json,sys;print(json.loads(sys.argv[1])['port'])" "$API")
+TOKEN=$(python3 -c "import json,sys;print(json.loads(sys.argv[1])['token'])" "$API")
+curl -s "http://127.0.0.1:$PORT/v1/state" -H "Authorization: Bearer $TOKEN"
+curl -s -X POST "http://127.0.0.1:$PORT/v1/output/toggle" -H "Authorization: Bearer $TOKEN"
+```
+
 ## Limitations
 
 - The app uses a **private, undocumented** CoreGraphics API for the virtual
@@ -312,6 +402,26 @@ cancellation, and results; potentially sensitive error text is private.
 - By default, the build script creates the current Mac architecture, not a
   Universal Binary.
 
+## Accessibility
+
+Every control is a standard SwiftUI `Button`, `Toggle`, or `Picker`, which
+macOS gives standard keyboard focus order and a visible focus ring for free.
+Icon-only controls and hidden picker labels carry an explicit accessibility
+label, and status text that used to be color-only (the launch-at-login line)
+now also carries an icon. This has not been tested end-to-end with VoiceOver.
+Automatic-recovery and status changes are conveyed visually and in text only;
+there are no sound cues.
+
+## Repository statistics
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/trsdn/OpenPromptr/stats/.github/stats/repo-card-dark.svg">
+  <img alt="Repository statistics" src="https://raw.githubusercontent.com/trsdn/OpenPromptr/stats/.github/stats/repo-card.svg">
+</picture>
+
+Generated daily by [`stats.yml`](.github/workflows/stats.yml) and committed to
+the `stats` branch, because `main` is protected.
+
 ## Contributing
 
 Contributions are welcome. The development workflow, language and commit
@@ -326,3 +436,9 @@ The [Code of Conduct](CODE_OF_CONDUCT.md) applies to how we work together.
 ## License
 
 [MIT](LICENSE) — Copyright © 2026 Torsten Mahr.
+
+### Third-party components
+
+- [AppUpdater](https://github.com/mxcl/AppUpdater) 4.1.2 — Unlicense.
+- [Version](https://github.com/mxcl/Version) (AppUpdater's own dependency) — Apache-2.0.
+- [Swifter](https://github.com/httpswift/swifter) 1.5.0 — BSD-3-Clause.

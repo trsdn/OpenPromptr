@@ -1,10 +1,10 @@
 import CoreGraphics
-import SwiftUI
 import OpenPromptrCore
+import SwiftUI
 
 /// A titled block of related controls. Keeps the window scannable without
 /// relying on the heavier platform `GroupBox` chrome.
-private struct ControlSection<Content: View>: View {
+struct ControlSection<Content: View>: View {
     let title: String
     let systemImage: String
     @ViewBuilder var content: Content
@@ -14,8 +14,13 @@ private struct ControlSection<Content: View>: View {
             Label(title, systemImage: systemImage)
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
             content
         }
+        // A named group for VoiceOver, the way a native GroupBox is one; the
+        // visible heading is what names it, so it is not read twice.
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(title)
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
@@ -123,7 +128,6 @@ struct ControlView: View {
             sourceSection
             targetSection
             orientationSection
-            startupSection
             statusSection
             actionBar
         }
@@ -136,7 +140,7 @@ struct ControlView: View {
         HStack(spacing: 10) {
             Image(systemName: "rectangle.on.rectangle.angled")
                 .font(.title2)
-                .foregroundStyle(.blue)
+                .foregroundStyle(.tint)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text("OpenPromptr")
@@ -153,12 +157,18 @@ struct ControlView: View {
     @ViewBuilder
     private var runningBadge: some View {
         if model.isRunning {
-            Label("Output running", systemImage: "dot.radiowaves.left.and.right")
-                .font(.caption.weight(.medium))
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(Capsule().fill(Color.green.opacity(0.18)))
-                .foregroundStyle(.green)
+            // Green marks the state, the text stays in the primary label color:
+            // green text on a pale green capsule is too faint in light mode.
+            Label {
+                Text("Output running")
+            } icon: {
+                Image(systemName: "dot.radiowaves.left.and.right")
+                    .foregroundStyle(.green)
+            }
+            .font(.caption.weight(.medium))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Capsule().fill(Color.green.opacity(0.18)))
         }
     }
 
@@ -170,26 +180,31 @@ struct ControlView: View {
                 }
             }
             .labelsHidden()
+            .accessibilityLabel("Source")
             .pickerStyle(.segmented)
             .disabled(model.isBusy)
 
             switch model.sourceKind {
             case .virtualDisplay:
-                Text("Creates an invisible display named \"\(model.virtualSourceName)\". Windows have to be moved there blindly; it only becomes visible as the mirrored image on the target display.")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                Text(
+                    "Creates an invisible display named \"\(model.virtualSourceName)\". Windows have to be moved there blindly; it only becomes visible as the mirrored image on the target display."
+                )
+                .font(.caption2)
+                .foregroundStyle(.secondary)
 
                 Button {
                     model.openDisplaySettings()
                 } label: {
                     Label(
-                        "Arrangement in Display Settings …",
+                        "Arrangement in Display Settings…",
                         systemImage: "arrow.up.forward.app"
                     )
                     .font(.caption)
                 }
                 .buttonStyle(.link)
-                .help("There you can define which edge the invisible display sits on and where the pointer leaves it.")
+                .help(
+                    "There you can define which edge the invisible display sits on and where the pointer leaves it."
+                )
             case .display:
                 Picker("Source display", selection: sourceDisplayBinding) {
                     Text("Please select")
@@ -200,6 +215,7 @@ struct ControlView: View {
                     }
                 }
                 .labelsHidden()
+                .accessibilityLabel("Source display")
                 .pickerStyle(.menu)
                 .disabled(model.isRunning || model.isBusy)
 
@@ -217,6 +233,7 @@ struct ControlView: View {
                         }
                     }
                     .labelsHidden()
+                    .accessibilityLabel("Source window")
                     .pickerStyle(.menu)
                     .disabled(model.isRunning || model.isBusy)
 
@@ -227,6 +244,7 @@ struct ControlView: View {
                     }
                     .disabled(model.isRefreshingWindows)
                     .help("Refresh window list")
+                    .accessibilityLabel("Refresh window list")
 
                     if model.isRefreshingWindows {
                         ProgressView()
@@ -234,9 +252,11 @@ struct ControlView: View {
                     }
                 }
 
-                Text("Mirrors exactly one window, for example the presenter view. Everything stays visible and fully usable.")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                Text(
+                    "Mirrors exactly one window, for example the presenter view. Everything stays visible and fully usable."
+                )
+                .font(.caption2)
+                .foregroundStyle(.secondary)
             }
         }
     }
@@ -252,6 +272,7 @@ struct ControlView: View {
                 }
             }
             .labelsHidden()
+            .accessibilityLabel("Target display")
             .pickerStyle(.menu)
             .frame(maxWidth: .infinity, alignment: .leading)
             .disabled(model.isRunning || model.isBusy)
@@ -262,9 +283,14 @@ struct ControlView: View {
                     .foregroundStyle(.secondary)
             }
             if let notice = model.singleDisplayNotice {
-                Label(notice, systemImage: "exclamationmark.triangle")
-                    .font(.caption2)
-                    .foregroundStyle(.orange)
+                Label {
+                    Text(notice)
+                        .foregroundStyle(.secondary)
+                } icon: {
+                    Image(systemName: "exclamationmark.triangle")
+                        .foregroundStyle(.orange)
+                }
+                .font(.caption2)
             }
         }
     }
@@ -285,6 +311,7 @@ struct ControlView: View {
                         }
                     }
                     .labelsHidden()
+                    .accessibilityLabel("Rotation")
                     .pickerStyle(.segmented)
 
                     HStack(spacing: 16) {
@@ -308,67 +335,6 @@ struct ControlView: View {
         }
     }
 
-    private var startupSection: some View {
-        ControlSection(title: "Startup and recovery", systemImage: "power") {
-            VStack(alignment: .leading, spacing: 6) {
-                Toggle(
-                    "Start output automatically when the app launches",
-                    isOn: Binding(
-                        get: { model.autoStartOutput },
-                        set: { model.setAutoStartOutput($0) }
-                    )
-                )
-
-                Toggle(
-                    "Automatically resume output after an interruption",
-                    isOn: Binding(
-                        get: { model.autoResumeOutput },
-                        set: { model.setAutoResumeOutput($0) }
-                    )
-                )
-                Text("Retries after 2, 5 and 15 seconds. Stop always cancels automatic recovery.")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-
-                HStack {
-                    Toggle(
-                        "Launch at login",
-                        isOn: Binding(
-                            get: { model.loginItemEnabled },
-                            set: { model.setLoginItemEnabled($0) }
-                        )
-                    )
-                    .disabled(model.loginItemBusy)
-                    if model.loginItemBusy {
-                        ProgressView()
-                            .controlSize(.mini)
-                    }
-                    if model.loginItemNeedsApproval {
-                        Button("Open System Settings") {
-                            model.openLoginItemsSettings()
-                        }
-                        .controlSize(.small)
-                    }
-                }
-
-                Text(model.loginItemStatusText)
-                    .font(.caption2)
-                    .foregroundStyle(
-                        model.loginItemStatusIsError ? .red : .secondary
-                    )
-
-                if !model.appIsInApplicationsFolder {
-                    Text(
-                        "For a reliable launch at login, move the signed app to /Applications and register it there."
-                    )
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                }
-            }
-            .toggleStyle(.checkbox)
-        }
-    }
-
     private var statusSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top, spacing: 8) {
@@ -378,6 +344,7 @@ struct ControlView: View {
                         : "info.circle.fill"
                 )
                 .foregroundStyle(model.statusIsError ? .red : .secondary)
+                .accessibilityHidden(true)
 
                 Text(model.statusText)
                     .font(.caption)
@@ -386,6 +353,12 @@ struct ControlView: View {
                     )
                     .fixedSize(horizontal: false, vertical: true)
             }
+            // The icon is decorative; a state that only colour and a symbol
+            // convey is spoken as text.
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(
+                model.statusIsError ? "Error: \(model.statusText)" : model.statusText
+            )
 
             if !model.permissionGranted {
                 HStack {
@@ -421,11 +394,12 @@ struct ControlView: View {
                     .controlSize(.small)
             }
 
-            if model.canStop {
+            if model.showsStop {
+                // No .cancelAction: Esc means "dismiss", and must not end a
+                // running teleprompter. Stop is ⌘. in the Output menu.
                 Button("Stop", role: .destructive) {
                     model.requestStop()
                 }
-                .keyboardShortcut(.cancelAction)
             }
             if !model.isRunning && !model.isBusy {
                 Button("Start output") {

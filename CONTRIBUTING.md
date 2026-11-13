@@ -6,42 +6,25 @@ section before making larger changes.
 
 ## Requirements
 
-- macOS 13 or newer (developed and tested on current versions)
-- Xcode Command Line Tools with Swift 6.1 or newer
-  (`swift-tools-version: 6.1`, see `Package.swift`)
+- The platform and toolchain requirements in the
+  [README](README.md#requirements)
 - For signed builds: a "Developer ID Application" or "Apple Development"
   certificate in the keychain
 
-There are no third-party dependencies. `swift build` is enough.
+The only third-party dependencies are `AppUpdater` and `Swifter`, resolved by
+SwiftPM; `swift build` is enough.
 
 ## Development workflow
 
-```bash
-swift build          # build
-swift test           # run unit tests
-./build-app.sh       # create signed .app bundle in dist/
-```
+The build, test, format and bundle commands are in
+[`AGENTS.md`](AGENTS.md#build--validate), which is their one home.
 
-The app icon is generated from code and is present in the repository as
-`Resources/AppIcon.icns`. Regenerate it after changes to
-`Scripts/make-icon.swift`:
-
-```bash
-swift Scripts/make-icon.swift
-```
-
-There is a self-test for a smoke test without a real target display:
-
-```bash
-open "dist/OpenPromptr.app" --args --self-test
-```
-
-It reports `SELF_TEST_PASS` when capture setup and output work.
+The app icon and the runtime self-test are described in the
+[README](README.md#app-icon) and [its self-test section](README.md#optional-runtime-self-test).
 
 ## Before the pull request
 
-- `swift build` completes without warnings.
-- `swift test` is green.
+- The validation commands in [`AGENTS.md`](AGENTS.md#build--validate) pass.
 - The change was checked manually with at least one source.
 - Behavior changes are described in `README.md`.
 

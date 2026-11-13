@@ -2,6 +2,7 @@ import CoreMedia
 import CoreVideo
 import Foundation
 import OSLog
+import OpenPromptrCore
 @preconcurrency import ScreenCaptureKit
 
 private let captureLogger = Logger(
@@ -13,14 +14,13 @@ struct CaptureStop: Sendable {
     let message: String
     let userInitiated: Bool
 }
-import OpenPromptrCore
 
 enum CapturePipelineError: LocalizedError {
     case invalidSourceGeometry(width: Int, height: Int)
 
     var errorDescription: String? {
         switch self {
-        case let .invalidSourceGeometry(width, height):
+        case .invalidSourceGeometry(let width, let height):
             return "Invalid capture size \(width)×\(height)."
         }
     }
@@ -65,15 +65,16 @@ private final class CaptureStreamBridge: NSObject, @unchecked Sendable,
         guard outputType == .screen else {
             return
         }
-        guard let attachments = CMSampleBufferGetSampleAttachmentsArray(
-            sampleBuffer,
-            createIfNecessary: false
-        ) as? [[SCStreamFrameInfo: Any]],
-              let statusRawValue = attachments.first?[.status] as? Int,
-              statusRawValue == SCFrameStatus.complete.rawValue,
-              sampleBuffer.isValid,
-              CMSampleBufferDataIsReady(sampleBuffer),
-              let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer)
+        guard
+            let attachments = CMSampleBufferGetSampleAttachmentsArray(
+                sampleBuffer,
+                createIfNecessary: false
+            ) as? [[SCStreamFrameInfo: Any]],
+            let statusRawValue = attachments.first?[.status] as? Int,
+            statusRawValue == SCFrameStatus.complete.rawValue,
+            sampleBuffer.isValid,
+            CMSampleBufferDataIsReady(sampleBuffer),
+            let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer)
         else {
             return
         }
@@ -107,11 +108,12 @@ private final class CaptureStreamBridge: NSObject, @unchecked Sendable,
             "Stream stopped (requested: \(expected, privacy: .public)): \(diagnostic.domain, privacy: .public) code \(diagnostic.code, privacy: .public), \(diagnostic.localizedDescription, privacy: .private)"
         )
         if !expected {
-            onUnexpectedStop(CaptureStop(
-                message: error.localizedDescription,
-                userInitiated: diagnostic.domain == SCStreamErrorDomain
-                    && diagnostic.code == SCStreamError.Code.userStopped.rawValue
-            ))
+            onUnexpectedStop(
+                CaptureStop(
+                    message: error.localizedDescription,
+                    userInitiated: diagnostic.domain == SCStreamErrorDomain
+                        && diagnostic.code == SCStreamError.Code.userStopped.rawValue
+                ))
         }
     }
 
@@ -122,10 +124,12 @@ private final class CaptureStreamBridge: NSObject, @unchecked Sendable,
     }
 
     private func markForImmediateDisplay(_ sampleBuffer: CMSampleBuffer) {
-        guard let attachments = CMSampleBufferGetSampleAttachmentsArray(
-            sampleBuffer,
-            createIfNecessary: true
-        ), CFArrayGetCount(attachments) > 0 else {
+        guard
+            let attachments = CMSampleBufferGetSampleAttachmentsArray(
+                sampleBuffer,
+                createIfNecessary: true
+            ), CFArrayGetCount(attachments) > 0
+        else {
             return
         }
 
@@ -161,9 +165,7 @@ final class CaptureSession {
     private var stopInProgress = false
     private var stopRequested = false
     private var stopped = false
-    private var stopWaiters: [
-        CheckedContinuation<Result<Void, any Error>, Never>
-    ] = []
+    private var stopWaiters: [CheckedContinuation<Result<Void, any Error>, Never>] = []
 
     init(
         snapshot: ResolvedCaptureSnapshot,
@@ -221,9 +223,10 @@ final class CaptureSession {
         for snapshot: ResolvedCaptureSnapshot
     ) -> SCContentFilter {
         switch snapshot.source {
-        case let .display(display, _):
+        case .display(let display, _):
             guard snapshot.sourceKind == .display,
-                  !snapshot.excludedApplications.isEmpty else {
+                !snapshot.excludedApplications.isEmpty
+            else {
                 // The virtual source never shows this app's windows, so no
                 // exclusion is needed and none is applied.
                 return SCContentFilter(display: display, excludingWindows: [])
@@ -235,7 +238,7 @@ final class CaptureSession {
                 excludingApplications: snapshot.excludedApplications,
                 exceptingWindows: []
             )
-        case let .window(window):
+        case .window(let window):
             return SCContentFilter(desktopIndependentWindow: window)
         }
     }

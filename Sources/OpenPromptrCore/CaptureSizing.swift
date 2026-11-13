@@ -15,8 +15,9 @@ public enum CaptureSizing {
         maximumDimension: Int
     ) -> PixelDimensions {
         guard sourceWidth > 0,
-              sourceHeight > 0,
-              maximumDimension > 0 else {
+            sourceHeight > 0,
+            maximumDimension > 0
+        else {
             return PixelDimensions(width: 0, height: 0)
         }
 

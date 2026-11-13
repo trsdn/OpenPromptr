@@ -97,9 +97,10 @@ public enum TransformGeometry {
             rotation: rotation
         )
         guard oriented.width > 0,
-              oriented.height > 0,
-              targetWidth > 0,
-              targetHeight > 0 else {
+            oriented.height > 0,
+            targetWidth > 0,
+            targetHeight > 0
+        else {
             return FittedRectangle(x: 0, y: 0, width: 0, height: 0)
         }
 
@@ -124,9 +125,10 @@ public enum TransformGeometry {
         transform displayTransform: DisplayTransform
     ) -> LayerPresentationGeometry? {
         guard sourceWidth > 0,
-              sourceHeight > 0,
-              targetBounds.width > 0,
-              targetBounds.height > 0 else {
+            sourceHeight > 0,
+            targetBounds.width > 0,
+            targetBounds.height > 0
+        else {
             return nil
         }
 
@@ -151,16 +153,18 @@ public enum TransformGeometry {
         transform displayTransform: DisplayTransform
     ) -> CGAffineTransform {
         guard sourceExtent.width > 0,
-              sourceExtent.height > 0 else {
+            sourceExtent.height > 0
+        else {
             return .identity
         }
 
-        let angle: CGFloat = switch displayTransform.rotation {
-        case .degrees0: 0
-        case .degrees90: -.pi / 2
-        case .degrees180: .pi
-        case .degrees270: .pi / 2
-        }
+        let angle: CGFloat =
+            switch displayTransform.rotation {
+            case .degrees0: 0
+            case .degrees90: -.pi / 2
+            case .degrees180: .pi
+            case .degrees270: .pi / 2
+            }
 
         var affine = CGAffineTransform(rotationAngle: angle)
         var extent = sourceExtent.applying(affine).standardized
@@ -206,9 +210,10 @@ public enum TransformGeometry {
         transform displayTransform: DisplayTransform
     ) -> CGAffineTransform {
         guard sourceExtent.width > 0,
-              sourceExtent.height > 0,
-              targetBounds.width > 0,
-              targetBounds.height > 0 else {
+            sourceExtent.height > 0,
+            targetBounds.width > 0,
+            targetBounds.height > 0
+        else {
             return .identity
         }
 
@@ -256,7 +261,8 @@ public struct PersistentDisplayIdentity: Codable, Equatable, Hashable, Sendable 
         self.vendorID = vendorID.flatMap { $0 == 0 ? nil : $0 }
         self.productID = productID.flatMap { $0 == 0 ? nil : $0 }
         self.serialNumber = serialNumber.flatMap { $0 == 0 ? nil : $0 }
-        self.displayUUID = displayUUID?
+        self.displayUUID =
+            displayUUID?
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .uppercased()
             .nilIfEmpty
@@ -310,9 +316,11 @@ public enum DisplayIdentityMatcher {
             return nil
         }
         if let storedSerial = stored.serialNumber,
-           let candidateSerial = candidate.serialNumber {
+            let candidateSerial = candidate.serialNumber
+        {
             guard storedSerial == candidateSerial,
-                  storedHardware == candidateHardware else {
+                storedHardware == candidateHardware
+            else {
                 return nil
             }
             return 400
@@ -322,9 +330,11 @@ public enum DisplayIdentityMatcher {
             return nil
         }
         if let storedUUID = stored.normalizedUUID,
-           let candidateUUID = candidate.normalizedUUID {
+            let candidateUUID = candidate.normalizedUUID
+        {
             if let storedHardware, let candidateHardware,
-               storedHardware != candidateHardware {
+                storedHardware != candidateHardware
+            {
                 return nil
             }
             guard storedUUID == candidateUUID else {
@@ -334,7 +344,8 @@ public enum DisplayIdentityMatcher {
         }
 
         if let storedHardware, let candidateHardware,
-           storedHardware != candidateHardware {
+            storedHardware != candidateHardware
+        {
             return nil
         }
 
@@ -354,7 +365,8 @@ public enum DisplayIdentityMatcher {
         _ identity: PersistentDisplayIdentity
     ) -> [UInt32]? {
         guard let vendorID = identity.vendorID,
-              let productID = identity.productID else {
+            let productID = identity.productID
+        else {
             return nil
         }
         return [vendorID, productID]
@@ -396,7 +408,8 @@ public struct WindowIdentity: Codable, Equatable, Hashable, Sendable {
     ) {
         self.bundleIdentifier = bundleIdentifier?.nilIfEmpty
         self.applicationName = applicationName
-        self.title = title?
+        self.title =
+            title?
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .nilIfEmpty
     }
@@ -433,12 +446,14 @@ public enum WindowIdentityMatcher {
         candidate: WindowIdentity
     ) -> Int? {
         if let storedBundle = stored.bundleIdentifier,
-           let candidateBundle = candidate.bundleIdentifier,
-           storedBundle != candidateBundle {
+            let candidateBundle = candidate.bundleIdentifier,
+            storedBundle != candidateBundle
+        {
             return nil
         }
         if stored.bundleIdentifier == nil || candidate.bundleIdentifier == nil,
-           stored.applicationName != candidate.applicationName {
+            stored.applicationName != candidate.applicationName
+        {
             return nil
         }
         if let storedTitle = stored.title {
@@ -522,14 +537,16 @@ public struct TeleprompterConfiguration: Codable, Equatable, Sendable {
             forKey: .display
         )
         self.target = target ?? legacyDisplay
-        source = try container.decodeIfPresent(
-            CaptureSourceSelection.self,
-            forKey: .source
-        ) ?? .virtualDisplay
-        transform = try container.decodeIfPresent(
-            DisplayTransform.self,
-            forKey: .transform
-        ) ?? .teleprompterDefault
+        source =
+            try container.decodeIfPresent(
+                CaptureSourceSelection.self,
+                forKey: .source
+            ) ?? .virtualDisplay
+        transform =
+            try container.decodeIfPresent(
+                DisplayTransform.self,
+                forKey: .transform
+            ) ?? .teleprompterDefault
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -559,6 +576,52 @@ private struct LegacyPresetSlot: Codable {
     var configuration: TeleprompterConfiguration?
 }
 
+/// How the app presents itself while running: a Dock icon, a menu bar status
+/// item, both, or neither. Two independent facts (Dock icon shown, menu bar
+/// item shown) rather than four unrelated ones, but named as one setting
+/// because that is how a person chooses it.
+public enum AppPresence: String, Codable, CaseIterable, Sendable {
+    case dockAndMenuBar
+    case dockOnly
+    case menuBarOnly
+    case backgroundOnly
+
+    public var showsDockIcon: Bool {
+        self == .dockAndMenuBar || self == .dockOnly
+    }
+
+    public var showsMenuBarItem: Bool {
+        self == .dockAndMenuBar || self == .menuBarOnly
+    }
+
+    public var localizedName: String {
+        switch self {
+        case .dockAndMenuBar:
+            return "Dock and menu bar"
+        case .dockOnly:
+            return "Dock icon only"
+        case .menuBarOnly:
+            return "Menu bar only"
+        case .backgroundOnly:
+            return "Background only"
+        }
+    }
+
+    public var localizedExplanation: String {
+        switch self {
+        case .dockAndMenuBar:
+            return "Shown in the Dock and in the menu bar."
+        case .dockOnly:
+            return "Shown in the Dock; reach Settings from its Dock menu or app menu."
+        case .menuBarOnly:
+            return "No Dock icon; controlled from the menu bar."
+        case .backgroundOnly:
+            return
+                "No Dock icon and no menu bar icon. Open the app again while it's running to bring up its window."
+        }
+    }
+}
+
 public struct AppSettings: Codable, Equatable, Sendable {
     public static let currentSchemaVersion = 2
 
@@ -566,17 +629,23 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var configuration: TeleprompterConfiguration
     public var autoStartOutput: Bool
     public var autoResumeOutput: Bool
+    public var enableLocalAPI: Bool
+    public var presence: AppPresence
 
     public init(
         schemaVersion: Int = currentSchemaVersion,
         configuration: TeleprompterConfiguration = .init(),
         autoStartOutput: Bool = false,
-        autoResumeOutput: Bool = false
+        autoResumeOutput: Bool = false,
+        enableLocalAPI: Bool = false,
+        presence: AppPresence = .dockAndMenuBar
     ) {
         self.schemaVersion = schemaVersion
         self.configuration = configuration
         self.autoStartOutput = autoStartOutput
         self.autoResumeOutput = autoResumeOutput
+        self.enableLocalAPI = enableLocalAPI
+        self.presence = presence
     }
 
     public static var defaults: AppSettings {
@@ -590,22 +659,37 @@ public struct AppSettings: Codable, Equatable, Sendable {
         case presets
         case autoStartOutput
         case autoResumeOutput
+        case enableLocalAPI
+        case presence
     }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        schemaVersion = try container.decodeIfPresent(
-            Int.self,
-            forKey: .schemaVersion
-        ) ?? 1
-        autoStartOutput = try container.decodeIfPresent(
-            Bool.self,
-            forKey: .autoStartOutput
-        ) ?? false
-        autoResumeOutput = try container.decodeIfPresent(
-            Bool.self,
-            forKey: .autoResumeOutput
-        ) ?? false
+        schemaVersion =
+            try container.decodeIfPresent(
+                Int.self,
+                forKey: .schemaVersion
+            ) ?? 1
+        autoStartOutput =
+            try container.decodeIfPresent(
+                Bool.self,
+                forKey: .autoStartOutput
+            ) ?? false
+        autoResumeOutput =
+            try container.decodeIfPresent(
+                Bool.self,
+                forKey: .autoResumeOutput
+            ) ?? false
+        enableLocalAPI =
+            try container.decodeIfPresent(
+                Bool.self,
+                forKey: .enableLocalAPI
+            ) ?? false
+        presence =
+            try container.decodeIfPresent(
+                AppPresence.self,
+                forKey: .presence
+            ) ?? .dockAndMenuBar
 
         if let configuration = try container.decodeIfPresent(
             TeleprompterConfiguration.self,
@@ -617,15 +701,18 @@ public struct AppSettings: Codable, Equatable, Sendable {
 
         // Schema version 1 stored three slots; carry over the one that was
         // active so an upgrade keeps the setup the user last worked with.
-        let presets = try container.decodeIfPresent(
-            [LegacyPresetSlot].self,
-            forKey: .presets
-        ) ?? []
-        let index = try container.decodeIfPresent(
-            Int.self,
-            forKey: .activePresetIndex
-        ) ?? 0
-        let active = presets.indices.contains(index)
+        let presets =
+            try container.decodeIfPresent(
+                [LegacyPresetSlot].self,
+                forKey: .presets
+            ) ?? []
+        let index =
+            try container.decodeIfPresent(
+                Int.self,
+                forKey: .activePresetIndex
+            ) ?? 0
+        let active =
+            presets.indices.contains(index)
             ? presets[index].configuration
             : presets.compactMap(\.configuration).first
         configuration = active ?? TeleprompterConfiguration()
@@ -637,6 +724,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
         try container.encode(configuration, forKey: .configuration)
         try container.encode(autoStartOutput, forKey: .autoStartOutput)
         try container.encode(autoResumeOutput, forKey: .autoResumeOutput)
+        try container.encode(enableLocalAPI, forKey: .enableLocalAPI)
+        try container.encode(presence, forKey: .presence)
     }
 
     public func normalized() -> AppSettings {
@@ -665,8 +754,8 @@ public enum AppSettingsCodec {
     }
 }
 
-private extension String {
-    var nilIfEmpty: String? {
+extension String {
+    fileprivate var nilIfEmpty: String? {
         isEmpty ? nil : self
     }
 }

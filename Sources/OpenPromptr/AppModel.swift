@@ -2,8 +2,8 @@ import AppKit
 import CoreGraphics
 import Foundation
 import OSLog
-import ServiceManagement
 import OpenPromptrCore
+import ServiceManagement
 
 private let lifecycleLogger = Logger(
     subsystem: "com.github.trsdn.OpenPromptr",
@@ -19,9 +19,9 @@ private enum AppModelError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case let .captureStoppedDuringStart(message):
+        case .captureStoppedDuringStart(let message):
             return "Screen capture stopped during startup: \(message)"
-        case let .renderingFailedDuringStart(message):
+        case .renderingFailedDuringStart(let message):
             return "Image output failed during startup: \(message)"
         }
     }
@@ -89,28 +89,22 @@ final class AppModel: ObservableObject {
     @Published private(set) var transform: DisplayTransform
     @Published private(set) var autoStartOutput: Bool
     @Published private(set) var autoResumeOutput: Bool
+    @Published private(set) var enableLocalAPI: Bool
+    @Published private(set) var presence: AppPresence
     @Published private(set) var isRunning = false
     @Published private(set) var isBusy = false
     @Published private(set) var isRefreshingWindows = false
     @Published private(set) var permissionGranted = false
-    @Published private(set) var statusText = "Looking for displays …"
+    @Published private(set) var statusText = "Looking for displays…"
     @Published private(set) var statusIsError = false
     @Published private(set) var loginItemEnabled = false
     @Published private(set) var loginItemBusy = false
     @Published private(set) var loginItemNeedsApproval = false
     @Published private(set) var loginItemStatusText =
-        "Checking launch-at-login status …"
+        "Checking launch-at-login status…"
     @Published private(set) var loginItemStatusIsError = false
 
-    private enum Lifecycle: Equatable {
-        case idle
-        case waiting
-        case recovering
-        case starting(UInt64)
-        case running
-        case stopping
-        case blocked
-    }
+    private typealias Lifecycle = OutputLifecycle
 
     private enum BlockReason: Equatable {
         case permission
@@ -128,6 +122,11 @@ final class AppModel: ObservableObject {
     /// hot-plug a display and make macOS rearrange physical monitors.
     private var virtualDisplayHost: VirtualDisplayHostProcess?
     private var virtualDisplayID: CGDirectDisplayID?
+    /// Set for the duration of `recreateVirtualSource()`, so `reconcileOutput`
+    /// can tell a legitimate, in-progress recreation apart from a genuine
+    /// failure while `virtualDisplayID` is transiently `nil`.
+    private var virtualSourceRecreateInFlight = false
+    private var localAPIServer: LocalAPIServer?
     private var workingSource: CaptureSourceSelection
     private var workingTargetIdentity: PersistentDisplayIdentity?
     private var lifecycle: Lifecycle = .idle
@@ -160,6 +159,8 @@ final class AppModel: ObservableObject {
         settings = loaded
         autoStartOutput = loaded.autoStartOutput
         autoResumeOutput = loaded.autoResumeOutput
+        enableLocalAPI = loaded.enableLocalAPI
+        presence = loaded.presence
 
         let configuration = loaded.configuration
         workingSource = configuration.source
@@ -180,6 +181,12 @@ final class AppModel: ObservableObject {
             name: NSApplication.didBecomeActiveNotification,
             object: nil
         )
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self,
+            selector: #selector(systemDidWake),
+            name: NSWorkspace.didWakeNotification,
+            object: nil
+        )
 
         refreshDisplaySnapshot()
         updateIdleStatus()
@@ -191,15 +198,27 @@ final class AppModel: ObservableObject {
         selfTestTimeoutTask?.cancel()
         recoveryTask?.cancel()
         NotificationCenter.default.removeObserver(self)
+        NSWorkspace.shared.notificationCenter.removeObserver(self)
     }
 
     var canStart: Bool {
-        !isRunning && !isBusy && workingTargetIdentity != nil
-            && workingSource.isComplete
+        OutputControls.canStart(
+            lifecycle: lifecycle,
+            hasTarget: workingTargetIdentity != nil,
+            sourceIsComplete: workingSource.isComplete
+        )
     }
 
     var canStop: Bool {
-        desiredOutput || isRunning || isBusy
+        OutputControls.canStop(desiredOutput: desiredOutput, lifecycle: lifecycle)
+    }
+
+    /// Whether the control window offers Stop: only while there is output to
+    /// stop, i.e. running, starting/stopping, or retrying after a failure.
+    /// Narrower than `canStop`, which also covers a merely desired output
+    /// (waiting for a display) and gates updates.
+    var showsStop: Bool {
+        lifecycle.showsStop
     }
 
     var usesVirtualSource: Bool {
@@ -219,7 +238,8 @@ final class AppModel: ObservableObject {
     var sourceSummary: String {
         switch sourceKind {
         case .virtualDisplay:
-            return "Virtual display \"\(VirtualSource.name)\" (\(VirtualSource.width)×\(VirtualSource.height))"
+            return
+                "Virtual display \"\(VirtualSource.name)\" (\(VirtualSource.width)×\(VirtualSource.height))"
         case .display:
             guard let identity = workingSource.display else {
                 return "No source display selected."
@@ -239,10 +259,12 @@ final class AppModel: ObservableObject {
 
     var displayConnectionHint: String? {
         guard selectedDisplayID == nil,
-              let identity = workingTargetIdentity else {
+            let identity = workingTargetIdentity
+        else {
             return nil
         }
-        return "Stored target, currently not unambiguously connected: \(identity.localizedName) — \(identity.nativeLongEdge)×\(identity.nativeShortEdge)"
+        return
+            "Stored target, currently not unambiguously connected: \(identity.localizedName) — \(identity.nativeLongEdge)×\(identity.nativeShortEdge)"
     }
 
     var singleDisplayNotice: String? {
@@ -250,9 +272,11 @@ final class AppModel: ObservableObject {
             return nil
         }
         if sourceKind == .display {
-            return "Only one physical display is connected; it cannot be source and target at the same time. Choose window mode or the virtual display."
+            return
+                "Only one physical display is connected; it cannot be source and target at the same time. Choose window mode or the virtual display."
         }
-        return "Only one physical display is connected; it serves as the target and the output covers the desktop there. Stopping stays available from the status menu."
+        return
+            "Only one physical display is connected; it serves as the target and the output covers the desktop there. Stopping stays available from the status menu."
     }
 
     var appIsInApplicationsFolder: Bool {
@@ -279,6 +303,9 @@ final class AppModel: ObservableObject {
         refreshLoginItemStatus()
         if sourceKind == .window {
             refreshWindows()
+        }
+        if enableLocalAPI {
+            startLocalAPIServer()
         }
 
         if isSelfTest {
@@ -314,6 +341,34 @@ final class AppModel: ObservableObject {
         // Re-enumerate so the new virtual display is excluded from targets.
         refreshDisplaySnapshot()
         updateIdleStatus()
+    }
+
+    /// Tears the virtual display down before deliberate recreation.
+    private func releaseVirtualSource() {
+        guard virtualDisplayHost != nil || virtualDisplayID != nil else {
+            return
+        }
+        virtualDisplayHost?.stop()
+        virtualDisplayHost = nil
+        virtualDisplayID = nil
+        refreshDisplaySnapshot()
+    }
+
+    /// Discards a virtual source display whose `CGDirectDisplayID`
+    /// ScreenCaptureKit no longer recognizes and creates a fresh one in its
+    /// place. The private CGVirtualDisplay does not reliably survive a
+    /// sleep/wake cycle: its ID can still read back as "online" via
+    /// `CGGetOnlineDisplayList`, but it silently drops out of
+    /// ScreenCaptureKit's `SCShareableContent`, so every further attempt
+    /// against the same ID fails identically — see
+    /// `DisplayResolutionError.screenCaptureSourceUnavailable`.
+    private func recreateVirtualSource() async {
+        virtualSourceRecreateInFlight = true
+        defer { virtualSourceRecreateInFlight = false }
+        releaseVirtualSource()
+        if resolvedTarget != nil || isSelfTest {
+            await ensureVirtualSource()
+        }
     }
 
     func selectSourceKind(_ kind: CaptureSourceKind) {
@@ -394,7 +449,8 @@ final class AppModel: ObservableObject {
         }
         // A display can never be its own source and target at the same time.
         if sourceKind == .display, displayID != nil,
-           selectedSourceDisplayID == displayID {
+            selectedSourceDisplayID == displayID
+        {
             selectSourceDisplay(nil)
         }
         persistConfiguration()
@@ -423,10 +479,11 @@ final class AppModel: ObservableObject {
                 return
             }
             windows = found
-            selectedSourceWindowID = DisplayCatalog.resolve(
-                workingSource.window,
-                among: found
-            )?.id
+            selectedSourceWindowID =
+                DisplayCatalog.resolve(
+                    workingSource.window,
+                    among: found
+                )?.id
             isRefreshingWindows = false
             updateIdleStatus()
             if lifecycle == .waiting {
@@ -471,6 +528,45 @@ final class AppModel: ObservableObject {
                 stopMessage: "Automatic output was disabled."
             )
         }
+    }
+
+    /// See issue #4: a loopback-only HTTP API so an external tool (a script,
+    /// a Stream Deck plugin) can start/stop output and read status without
+    /// going through the menu bar.
+    /// Whether the app shows a Dock icon, a menu bar status item, both or
+    /// neither. `AppDelegate` observes this and applies it — an AppKit
+    /// lifecycle concern that needs the window/update-manager references it
+    /// already owns, not something `AppModel` can act on itself.
+    func setPresence(_ newValue: AppPresence) {
+        presence = newValue
+        settings.presence = newValue
+        persistSettings()
+    }
+
+    func setEnableLocalAPI(_ enabled: Bool) {
+        enableLocalAPI = enabled
+        settings.enableLocalAPI = enabled
+        persistSettings()
+
+        if enabled {
+            startLocalAPIServer()
+        } else {
+            stopLocalAPIServer()
+        }
+    }
+
+    private func startLocalAPIServer() {
+        guard localAPIServer == nil else {
+            return
+        }
+        let server = LocalAPIServer(model: self)
+        server.start()
+        localAPIServer = server
+    }
+
+    private func stopLocalAPIServer() {
+        localAPIServer?.stop()
+        localAPIServer = nil
     }
 
     func refreshDisplays() {
@@ -545,9 +641,12 @@ final class AppModel: ObservableObject {
     }
 
     func openScreenRecordingSettings() {
-        guard let url = URL(
-            string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"
-        ), NSWorkspace.shared.open(url) else {
+        guard
+            let url = URL(
+                string:
+                    "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"
+            ), NSWorkspace.shared.open(url)
+        else {
             setStatus(
                 "System Settings could not be opened.",
                 isError: true
@@ -560,9 +659,11 @@ final class AppModel: ObservableObject {
     /// invisible virtual monitor can be positioned relative to the physical
     /// ones. Uses the macOS 13+ settings extension identifier.
     func openDisplaySettings() {
-        guard let url = URL(
-            string: "x-apple.systempreferences:com.apple.Displays-Settings.extension"
-        ), NSWorkspace.shared.open(url) else {
+        guard
+            let url = URL(
+                string: "x-apple.systempreferences:com.apple.Displays-Settings.extension"
+            ), NSWorkspace.shared.open(url)
+        else {
             setStatus(
                 "Display Settings could not be opened.",
                 isError: true
@@ -655,7 +756,8 @@ final class AppModel: ObservableObject {
             if lifecycle == .running
                 || captureSession != nil
                 || startingCaptureSession != nil
-                || startingOutputController != nil {
+                || startingOutputController != nil
+            {
                 await stopCommittedOutput(
                     message: message,
                     isError: false
@@ -675,6 +777,7 @@ final class AppModel: ObservableObject {
     }
 
     func shutdown() async {
+        stopLocalAPIServer()
         cancelRecovery(resetBudget: true)
         displayChangeTask?.cancel()
         windowRefreshTask?.cancel()
@@ -689,7 +792,8 @@ final class AppModel: ObservableObject {
             || startingCaptureSession != nil
             || startingOutputController != nil
             || lifecycle == .running
-            || isBusy {
+            || isBusy
+        {
             await stopCommittedOutput(
                 message: "The app is quitting.",
                 isError: false
@@ -726,10 +830,13 @@ final class AppModel: ObservableObject {
         }
 
         refreshDisplaySnapshot()
-        guard let target = resolvedTarget ?? DisplayCatalog.defaultTarget(
-            among: displays,
-            preferredName: preferredTargetName
-        ) else {
+        guard
+            let target = resolvedTarget
+                ?? DisplayCatalog.defaultTarget(
+                    among: displays,
+                    preferredName: preferredTargetName
+                )
+        else {
             finishSelfTest(
                 "SELF_TEST_FAIL: No physical target display is available.",
                 isError: true
@@ -769,6 +876,7 @@ final class AppModel: ObservableObject {
     }
 
     func prepareForTermination() {
+        stopLocalAPIServer()
         cancelRecovery(resetBudget: true)
         outputController?.close()
         startingOutputController?.close()
@@ -806,10 +914,11 @@ final class AppModel: ObservableObject {
         // Adopt a default target only when nothing is saved yet, so a saved
         // but temporarily disconnected target is preserved for reconnect.
         if workingTargetIdentity == nil,
-           let fallback = DisplayCatalog.defaultTarget(
-               among: displays,
-               preferredName: preferredTargetName
-           ) {
+            let fallback = DisplayCatalog.defaultTarget(
+                among: displays,
+                preferredName: preferredTargetName
+            )
+        {
             workingTargetIdentity = fallback.identity
         }
         selectedDisplayID = resolvedTarget?.id
@@ -890,56 +999,66 @@ final class AppModel: ObservableObject {
         }
 
         if usesVirtualSource, virtualDisplayID == nil,
-           resolvedTarget != nil {
-            await ensureVirtualSource()
-        }
-
-        if usesVirtualSource, virtualDisplayID == nil,
-           resolvedTarget != nil {
-            let message =
-                "The virtual source display could not be created (private API unavailable)."
-            if lifecycle == .running || captureSession != nil {
-                await stopCommittedOutput(message: message, isError: true)
-            } else {
-                setLifecycle(.blocked)
-                setStatus(message, isError: true)
-            }
-            return
-        }
-
-        guard let target = resolvedTarget, resolvedSourceIsAvailable else {
-            if lifecycle == .recovering {
-                cancelRecovery(resetBudget: false)
-                blockReason = nil
-            }
-            if case .starting = lifecycle {
-                operationEpoch &+= 1
+            resolvedTarget != nil
+        {
+            guard !virtualSourceRecreateInFlight else {
+                setLifecycle(.waiting)
                 setStatus(waitingStatusText, isError: false)
                 return
             }
-            if lifecycle == .running || captureSession != nil {
+            await ensureVirtualSource()
+
+            if virtualDisplayID == nil {
+                let message =
+                    "The virtual source display could not be created (private API unavailable)."
+                if lifecycle == .running || captureSession != nil {
+                    await stopCommittedOutput(message: message, isError: true)
+                } else {
+                    setLifecycle(.blocked)
+                    setStatus(message, isError: true)
+                }
+                return
+            }
+        }
+
+        guard let target = resolvedTarget, resolvedSourceIsAvailable else {
+            if DisplaysUnavailableResponse.cancelsRecovery(lifecycle: lifecycle) {
+                cancelRecovery(resetBudget: false)
+                blockReason = nil
+            }
+            switch DisplaysUnavailableResponse.decide(
+                lifecycle: lifecycle,
+                hasCaptureSession: captureSession != nil
+            ) {
+            case .discardStartAndWait:
+                operationEpoch &+= 1
+                setStatus(waitingStatusText, isError: false)
+            case .stopAndWait:
                 await stopCommittedOutput(
                     message: waitingStatusText,
                     isError: false
                 )
-            } else if lifecycle != .stopping {
+            case .wait:
                 setLifecycle(.waiting)
                 setStatus(waitingStatusText, isError: false)
+            case .leaveAlone:
+                break
             }
             return
         }
 
         if lifecycle == .running {
             guard let activeSnapshot,
-                  activeSnapshot.targetDescriptor.id == target.id,
-                  activeSnapshot.targetDescriptor.identity
+                activeSnapshot.targetDescriptor.id == target.id,
+                activeSnapshot.targetDescriptor.identity
                     == target.identity,
-                  activeSnapshot.targetDescriptor.pixelWidth
+                activeSnapshot.targetDescriptor.pixelWidth
                     == target.pixelWidth,
-                  activeSnapshot.targetDescriptor.pixelHeight
+                activeSnapshot.targetDescriptor.pixelHeight
                     == target.pixelHeight,
-                  activeSnapshot.targetDescriptor.frame
-                    == target.frame else {
+                activeSnapshot.targetDescriptor.frame
+                    == target.frame
+            else {
                 await stopCommittedOutput(
                     message: "Display configuration changed; restarting the output.",
                     isError: false
@@ -1018,7 +1137,7 @@ final class AppModel: ObservableObject {
         pendingRenderingFailure = nil
         pendingFirstFrame = nil
         setLifecycle(.starting(epoch))
-        setStatus("Preparing the capture safely …", isError: false)
+        setStatus("Preparing the capture safely…", isError: false)
 
         var localOutput: OutputWindowController?
         var localSession: CaptureSession?
@@ -1026,8 +1145,9 @@ final class AppModel: ObservableObject {
         do {
             let snapshot = try await makeSnapshot(target: target)
             guard epoch == operationEpoch,
-                  desiredOutput,
-                  !manualStopSuppressed else {
+                desiredOutput,
+                !manualStopSuppressed
+            else {
                 if lifecycle == .starting(epoch) {
                     setLifecycle(.idle)
                 }
@@ -1077,21 +1197,24 @@ final class AppModel: ObservableObject {
             try await session.start()
 
             if let pendingCaptureStop,
-               pendingCaptureStop.epoch == epoch {
+                pendingCaptureStop.epoch == epoch
+            {
                 throw AppModelError.captureStoppedDuringStart(
                     pendingCaptureStop.message
                 )
             }
             if let pendingRenderingFailure,
-               pendingRenderingFailure.epoch == epoch {
+                pendingRenderingFailure.epoch == epoch
+            {
                 throw AppModelError.renderingFailedDuringStart(
                     pendingRenderingFailure.message
                 )
             }
 
             guard epoch == operationEpoch,
-                  desiredOutput,
-                  !manualStopSuppressed else {
+                desiredOutput,
+                !manualStopSuppressed
+            else {
                 try? await session.stop()
                 output.close()
                 if lifecycle == .starting(epoch) {
@@ -1106,8 +1229,9 @@ final class AppModel: ObservableObject {
                 virtualDisplayID: virtualDisplayID
             )
             guard epoch == operationEpoch,
-                  desiredOutput,
-                  !manualStopSuppressed else {
+                desiredOutput,
+                !manualStopSuppressed
+            else {
                 try? await session.stop()
                 output.close()
                 if lifecycle == .starting(epoch) {
@@ -1135,7 +1259,7 @@ final class AppModel: ObservableObject {
             recoveryFailure = nil
             output.reveal()
             setStatus(
-                "Output active; waiting for the first complete frame …",
+                "Output active; waiting for the first complete frame…",
                 isError: false
             )
             lifecycleLogger.notice(
@@ -1174,37 +1298,52 @@ final class AppModel: ObservableObject {
             }
 
             refreshDisplaySnapshot()
-            if isTransientSourceStartError(startError) {
-                // The virtual source display is not online or ready for screen
-                // capture yet (for example right after creation during a
-                // launch-at-login start), or the display configuration changed
-                // while starting up. Do not block permanently: wait for the
-                // next display change and retry automatically.
+            let failureKind = Self.startFailureKind(of: startError)
+            if sourceKind == .virtualDisplay, failureKind.requiresVirtualSourceRecreation {
+                await recreateVirtualSource()
+            }
+            guard epoch == operationEpoch else {
+                if lifecycle == .starting(epoch) {
+                    setLifecycle(.idle)
+                }
+                await reconcileOutput()
+                return
+            }
+            let response = StartFailureResponse.decide(
+                failureKind,
+                targetIsResolved: resolvedTarget != nil,
+                hasPendingRecovery: recoveryFailure != nil
+            )
+            switch response.outcome {
+            case .waitQuietly:
+                // A display or window is not there yet (for example the virtual
+                // source right after creation during a launch-at-login start,
+                // or a target monitor that is not connected, or the display
+                // configuration changed while starting up). Do not block
+                // permanently and do not call it a failure: wait for the next
+                // display change and retry automatically.
                 blockReason = nil
                 setLifecycle(.waiting)
                 setStatus(
                     waitingStatusText,
                     isError: false
                 )
-                if recoveryFailure != nil {
+                if response.schedulesRecovery {
                     scheduleRecovery(after: "Start interrupted: \(startError.localizedDescription)")
                 }
-            } else if resolvedTarget != nil {
+            case .blockWithError:
                 blockReason = .capture
                 setLifecycle(.blocked)
                 setStatus(
                     "Start failed: \(startError.localizedDescription) Try again with \"Start output\".",
                     isError: true
                 )
-                if case .sourceIsTarget = startError as? DisplayResolutionError {
+                if response.clearsRecoveryFailure {
                     recoveryFailure = nil
-                } else {
+                }
+                if response.schedulesRecovery {
                     scheduleRecovery(after: "Start failed: \(startError.localizedDescription)")
                 }
-            } else {
-                blockReason = nil
-                setLifecycle(.waiting)
-                setStatus(waitingStatusText, isError: false)
             }
         }
     }
@@ -1242,7 +1381,7 @@ final class AppModel: ObservableObject {
         setLifecycle(.stopping)
         var closedOutput: OutputWindowController?
         for output in outputs
-            where closedOutput == nil || closedOutput !== output {
+        where closedOutput == nil || closedOutput !== output {
             output.close()
             closedOutput = output
         }
@@ -1250,7 +1389,7 @@ final class AppModel: ObservableObject {
         var stopError: (any Error)?
         var stoppedSession: CaptureSession?
         for session in sessions
-            where stoppedSession == nil || stoppedSession !== session {
+        where stoppedSession == nil || stoppedSession !== session {
             do {
                 try await session.stop()
             } catch {
@@ -1322,14 +1461,16 @@ final class AppModel: ObservableObject {
         Task { @MainActor [weak self] in
             try? await Task.sleep(for: .milliseconds(350))
             guard let self, epoch == operationEpoch,
-                  desiredOutput, !manualStopSuppressed else {
+                desiredOutput, !manualStopSuppressed
+            else {
                 return
             }
             permissionGranted = CGPreflightScreenCaptureAccess()
             guard permissionGranted else {
                 blockReason = .permission
                 await stopCommittedOutput(
-                    message: "Screen recording permission is missing. Grant access in System Settings.",
+                    message:
+                        "Screen recording permission is missing. Grant access in System Settings.",
                     isError: true
                 )
                 return
@@ -1339,17 +1480,21 @@ final class AppModel: ObservableObject {
                 // A closed or hidden window ends the stream; re-enumerate so a
                 // reopened window can be picked up instead of hard-blocking.
                 windows = await DisplayCatalog.availableWindows()
-                selectedSourceWindowID = DisplayCatalog.resolve(
-                    workingSource.window,
-                    among: windows
-                )?.id
+                selectedSourceWindowID =
+                    DisplayCatalog.resolve(
+                        workingSource.window,
+                        among: windows
+                    )?.id
             }
             guard epoch == operationEpoch else {
                 return
             }
-            if resolvedTarget != nil, resolvedSourceIsAvailable {
+            switch CaptureEndedResponse.decide(
+                displaysAvailable: resolvedTarget != nil && resolvedSourceIsAvailable
+            ) {
+            case .recover:
                 await recoverFromFailure("Screen capture stopped: \(message)")
-            } else {
+            case .stopAndWait:
                 blockReason = nil
                 await stopCommittedOutput(
                     message: waitingStatusText,
@@ -1446,7 +1591,8 @@ final class AppModel: ObservableObject {
             isError: true
         )
         guard generation == recoveryGeneration,
-              lifecycle == .blocked, blockReason == .capture else {
+            lifecycle == .blocked, blockReason == .capture
+        else {
             return
         }
         scheduleRecovery(after: message)
@@ -1454,7 +1600,8 @@ final class AppModel: ObservableObject {
 
     private func scheduleRecovery(after message: String) {
         guard autoResumeOutput, !isSelfTest,
-              desiredOutput, !manualStopSuppressed else {
+            desiredOutput, !manualStopSuppressed
+        else {
             blockReason = .capture
             setLifecycle(.blocked)
             setStatus("\(message) Try again with \"Start output\".", isError: true)
@@ -1465,24 +1612,34 @@ final class AppModel: ObservableObject {
         }
         recoveryFailure = message
         permissionGranted = CGPreflightScreenCaptureAccess()
-        guard permissionGranted else {
+        let delay: Int
+        switch RecoveryDecision.decide(
+            permissionGranted: permissionGranted,
+            displaysAvailable: resolvedTarget != nil && resolvedSourceIsAvailable,
+            nextDelay: recoveryPolicy.nextDelay
+        ) {
+        case .blockForPermission:
             blockReason = .permission
             setLifecycle(.blocked)
-            setStatus("Screen recording permission is missing. Grant access in System Settings.", isError: true)
+            setStatus(
+                "Screen recording permission is missing. Grant access in System Settings.",
+                isError: true)
             return
-        }
-        guard resolvedTarget != nil, resolvedSourceIsAvailable else {
+        case .waitForDisplays:
             blockReason = nil
             setLifecycle(.waiting)
             setStatus(waitingStatusText, isError: false)
             return
-        }
-        guard let delay = recoveryPolicy.nextDelay else {
+        case .exhausted:
             blockReason = .capture
             setLifecycle(.blocked)
-            setStatus("\(message) Automatic recovery failed after 3 attempts. Use \"Start output\" to retry.", isError: true)
+            setStatus(
+                "\(message) Automatic recovery failed after 3 attempts. Use \"Start output\" to retry.",
+                isError: true)
             lifecycleLogger.error("Automatic recovery exhausted after 3 attempts.")
             return
+        case .retry(let seconds):
+            delay = seconds
         }
 
         blockReason = nil
@@ -1499,8 +1656,9 @@ final class AppModel: ObservableObject {
             // a cancelled task whose deadline raced with a user action.
             try? await Task.sleep(for: .seconds(delay))
             guard let self, !Task.isCancelled,
-                  generation == recoveryGeneration, epoch == operationEpoch,
-                  lifecycle == .recovering else {
+                generation == recoveryGeneration, epoch == operationEpoch,
+                lifecycle == .recovering
+            else {
                 return
             }
             permissionGranted = CGPreflightScreenCaptureAccess()
@@ -1514,21 +1672,24 @@ final class AppModel: ObservableObject {
             if sourceKind == .window {
                 let found = await DisplayCatalog.availableWindows()
                 guard !Task.isCancelled, generation == recoveryGeneration,
-                      epoch == operationEpoch, lifecycle == .recovering else {
+                    epoch == operationEpoch, lifecycle == .recovering
+                else {
                     return
                 }
                 windows = found
                 selectedSourceWindowID = resolvedSourceWindow?.id
             }
             guard !Task.isCancelled, generation == recoveryGeneration,
-                  epoch == operationEpoch, lifecycle == .recovering else {
+                epoch == operationEpoch, lifecycle == .recovering
+            else {
                 return
             }
             recoveryTask = nil
             setLifecycle(.idle)
             permissionGranted = CGPreflightScreenCaptureAccess()
             guard permissionGranted, let target = resolvedTarget,
-                  resolvedSourceIsAvailable else {
+                resolvedSourceIsAvailable
+            else {
                 await reconcileOutput()
                 return
             }
@@ -1536,7 +1697,8 @@ final class AppModel: ObservableObject {
                 scheduleRecovery(after: message)
                 return
             }
-            lifecycleLogger.notice("Automatic recovery attempt \(attempt, privacy: .public)/3 starting.")
+            lifecycleLogger.notice(
+                "Automatic recovery attempt \(attempt, privacy: .public)/3 starting.")
             await startResolvedOutput(target: target)
         }
     }
@@ -1587,21 +1749,22 @@ final class AppModel: ObservableObject {
             return "No target display selected yet."
         }
         if selectedDisplayID == nil {
-            return "Quietly waiting for the stored target display \"\(workingTargetIdentity.localizedName)\" …"
+            return
+                "Quietly waiting for the stored target display \"\(workingTargetIdentity.localizedName)\"…"
         }
         switch sourceKind {
         case .virtualDisplay:
-            return "Waiting for the virtual source display \"\(VirtualSource.name)\" …"
+            return "Waiting for the virtual source display \"\(VirtualSource.name)\"…"
         case .display:
             guard let identity = workingSource.display else {
                 return "No source display selected yet."
             }
-            return "Quietly waiting for the stored source display \"\(identity.localizedName)\" …"
+            return "Quietly waiting for the stored source display \"\(identity.localizedName)\"…"
         case .window:
             guard let identity = workingSource.window else {
                 return "No source window selected yet."
             }
-            return "Quietly waiting for the window \"\(identity.localizedName)\" …"
+            return "Quietly waiting for the window \"\(identity.localizedName)\"…"
         }
     }
 
@@ -1610,20 +1773,19 @@ final class AppModel: ObservableObject {
     /// autostart) or the display configuration changed mid-start. These
     /// self-heal on the next screen-parameters change, so we wait and retry
     /// instead of hard-blocking.
-    private func isTransientSourceStartError(_ error: Error) -> Bool {
+    /// Maps a start error onto what the response to it depends on.
+    private static func startFailureKind(of error: Error) -> StartFailureKind {
         guard let error = error as? DisplayResolutionError else {
-            return false
+            return .other
         }
         switch error {
-        case .virtualSourceUnavailable,
-             .sourceDisplayUnavailable,
-             .sourceWindowUnavailable,
-             .configurationChanged:
-            return true
-        case .sourceIsTarget,
-             .screenCaptureSourceUnavailable,
-             .targetDisplayUnavailable:
-            return false
+        case .virtualSourceUnavailable: return .virtualSourceUnavailable
+        case .sourceDisplayUnavailable: return .sourceDisplayUnavailable
+        case .sourceWindowUnavailable: return .sourceWindowUnavailable
+        case .targetDisplayUnavailable: return .targetDisplayUnavailable
+        case .configurationChanged: return .configurationChanged
+        case .sourceIsTarget: return .sourceIsTarget
+        case .screenCaptureSourceUnavailable: return .screenCaptureSourceUnavailable
         }
     }
 
@@ -1635,13 +1797,8 @@ final class AppModel: ObservableObject {
 
     private func setLifecycle(_ newValue: Lifecycle) {
         lifecycle = newValue
-        isRunning = newValue == .running
-        switch newValue {
-        case .starting, .stopping:
-            isBusy = true
-        case .idle, .waiting, .recovering, .running, .blocked:
-            isBusy = false
-        }
+        isRunning = newValue.isRunning
+        isBusy = newValue.isBusy
     }
 
     private func updateIdleStatus() {
@@ -1676,8 +1833,21 @@ final class AppModel: ObservableObject {
     }
 
     private func setStatus(_ text: String, isError: Bool) {
+        let isNewError = isError && (text != statusText || !statusIsError)
         statusText = text
         statusIsError = isError
+        // A change of the status line is silent for VoiceOver. Errors are worth
+        // interrupting for, so say them; progress texts are not.
+        if isNewError, !isSelfTest, didLaunch, let application = NSApp {
+            NSAccessibility.post(
+                element: application,
+                notification: .announcementRequested,
+                userInfo: [
+                    .announcement: "Error: \(text)",
+                    .priority: NSAccessibilityPriorityLevel.high.rawValue,
+                ]
+            )
+        }
     }
 
     @objc
@@ -1699,6 +1869,33 @@ final class AppModel: ObservableObject {
         updatePermissionStatus()
         refreshLoginItemStatus()
     }
+
+    @objc
+    private func systemDidWake(_ notification: Notification) {
+        Task { @MainActor [weak self] in
+            await self?.recreateVirtualSourceAfterWake()
+        }
+    }
+
+    /// Proactively refreshes an idle virtual source right after the Mac
+    /// wakes, so a manual "Start output" does not have to burn a doomed
+    /// attempt against a display ID ScreenCaptureKit already dropped during
+    /// sleep. Left alone while output is starting or running: a live
+    /// `CaptureSession` still references the old display, and pulling it
+    /// out from under that session belongs to the same failure-driven path
+    /// `startResolvedOutput` already uses (`recreateVirtualSource()`), not
+    /// to a notification handler racing it.
+    private func recreateVirtualSourceAfterWake() async {
+        guard virtualDisplayHost != nil || virtualDisplayID != nil,
+            resolvedTarget != nil,
+            captureSession == nil,
+            startingCaptureSession == nil,
+            lifecycle == .idle
+        else {
+            return
+        }
+        await recreateVirtualSource()
+    }
 }
 
 @MainActor
@@ -1713,10 +1910,11 @@ enum ControlWindowCoordinator {
 
         // Prefer a physical screen that is neither the output target nor the
         // (invisible) virtual source, so the control window stays visible.
-        let destination = NSScreen.screens.first(where: {
-            $0.displayID != targetScreen.displayID
-                && $0.displayID != virtualDisplayID
-        }) ?? targetScreen
+        let destination =
+            NSScreen.screens.first(where: {
+                $0.displayID != targetScreen.displayID
+                    && $0.displayID != virtualDisplayID
+            }) ?? targetScreen
         controlWindow.level = .normal
         controlWindow.setFrame(
             clampedFrame(

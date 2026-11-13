@@ -1,4 +1,5 @@
 import Testing
+
 @testable import OpenPromptrCore
 
 @Test("Recovery allows exactly three attempts after 2, 5 and 15 seconds")

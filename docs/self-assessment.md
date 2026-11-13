@@ -1,0 +1,156 @@
+# Self-assessment
+
+Assessed against the
+[trsdn Repository Quality Standard](https://github.com/trsdn/.github/blob/main/docs/repository-quality-standard.md)
+v1.21.0 on 2026-09-22, by an AI agent reading the repository, the GitHub API and
+the published v1.3.2 release. The machine-readable result is
+[`.github/conformance.yml`](../.github/conformance.yml); this document is the
+evidence for every criterion that isn't a clean pass. A clean pass isn't
+repeated here — see `standard.yml`'s catalog for what each ID means.
+
+Overall state: **Healthy**: no criterion is `Fail` and none is `Partial`.
+
+## Profiles claimed
+
+Baseline, Public, Software, Package And Release, Product Identity, Agent
+Readiness, Language And Localization, Accessibility, Data Protection And
+Privacy, and Published Site. OpenPromptr ships a product (a signed macOS app)
+that a non-developer installs and runs by name, which is what triggers
+Published Site under the standard's
+["Published Sites"](https://github.com/trsdn/.github/blob/main/docs/repository-quality-standard.md#published-sites)
+section and
+[decision 0020](https://github.com/trsdn/.github/blob/main/docs/decisions/0020-public-applications-need-a-site.md):
+that profile now applies whether or not a site exists yet, and OpenPromptr
+already publishes one at `docs/`, served by GitHub Pages.
+
+Not claimed: Documentation (the primary product is the app, not documentation
+or content), Deployable (a distributed desktop app, not a deployed service),
+Archived (the repository is active).
+
+## New since the 1.15.0 record
+
+- **P12** — pass. Both Dependabot alerts and Dependabot security updates are
+  enabled (`gh api repos/trsdn/OpenPromptr/vulnerability-alerts` and
+  `.../automated-security-fixes`, both `204`).
+- **P13** — pass. A CodeQL default setup is configured and its state is
+  `active` (confirmed by `scripts/assess.py` and
+  `gh api repos/trsdn/OpenPromptr/code-scanning/default-setup`), covering
+  Swift, JavaScript/TypeScript and GitHub Actions. The `CodeQL` check on the
+  latest runs of `main` is green.
+- **R09** — pass. `RELEASE_CHECKLIST.md` now documents the release security
+  gate (a new step 5) and a "Release security gate log" table, on the same
+  convention as the existing smoke-test log. Both parts read the checks this
+  repository already runs continuously: GitHub secret scanning (`S05`) and
+  Dependabot alerts (`P12`). At assessment time, both are empty for `main`
+  (`gh api repos/trsdn/OpenPromptr/secret-scanning/alerts?state=open` and
+  `.../dependabot/alerts?state=open` with `severity=critical`/`high`), and the
+  log records that retroactively for the latest release, `v1.3.2`
+  (commit `649471a`).
+
+## Resolved since the last pass
+
+- **R03–R08** — `v1.2.0` and `v1.3.0` are real, signed, notarized releases
+  produced by `trsdn/macos-notarization-broker`'s `openpromptr` profile, started
+  for the tag with the command in `RELEASE_CHECKLIST.md` (R03). Tag, version and
+  release title agree (R04). Release notes are the CHANGELOG entry for the
+  version, and the broker refuses to publish without it (R06, R07).
+  `provenance.json` is a release asset, and `stapler validate` and `spctl` both
+  accept the DMG (R08). `R05` moved to partial only because 1.14.0 asks for more
+  than the broker's own preflight (see above).
+- **R05** — 1.15.0 asks for a smoke kit, a documented command that checks the
+  published artifact without an operator, run and recorded. `Scripts/smoke-published.sh`
+  is that kit and is documented in `RELEASE_CHECKLIST.md`; it was run against
+  v1.3.0 through v1.3.3 (2026-09-20 to 2026-09-22) (9 of 9 checks: checksums, updater copy identical,
+  notarization stapled, Gatekeeper accepts DMG and app, signature verifies,
+  bundle identifier and version, app launches and reports `OpenPromptr 1.3.0
+  (64)`), and the result is in the log there. The core function is not
+  exercised, and the standard no longer requires it.
+- **R02** — the README now states the SemVer scheme and what a consumer can rely
+  on across versions.
+- **L03** — the README now declares the interface English-only, with no
+  localizations planned.
+- **B05** — the commands are documented in `AGENTS.md`, and the latest run of
+  them on `main` (CI, 2026-09-20) is green; 1.15.0 counts that as run.
+- **P09** — `.github/workflows/stats.yml` runs `trsdn/.github`'s reusable
+  `repo-stats` workflow (pinned to a commit) daily and on dispatch. It has run
+  (dispatch, 2026-09-20, success) and committed `repo-card.svg` and
+  `repo-card-dark.svg` to the `stats` branch; both are served at the URLs the
+  README embeds with a `<picture>` element, are `image/svg+xml`, and contain no
+  external references. The `stats` branch had to exist before the first run (the
+  workflow checks it out) and was created once from `main`.
+- **S02** — reading applied: the main entry point of a graphical application is
+  the logic behind its action, reached without its views. For OpenPromptr the
+  action is "mirror a source onto a target display, and keep it up". The pure
+  math (aspect fit, capture sizing, rotation and mirroring) and the decisions
+  behind starting, stopping and recovering output live in `OpenPromptrCore`:
+  what a failed start means, what to do when a display goes away or a capture
+  stream ends, when and how often to retry (2, 5 and 15 seconds, then stop), and
+  when Start and Stop are offered. 60 tests cover them, including failure paths
+  (a missing monitor waits quietly, source equal to target is reported and never
+  retried, missing permission wins over everything, the retry budget runs out).
+  What is not tested is the code that calls ScreenCaptureKit and draws on a
+  display, which needs a real display and a Screen Recording grant; `AGENTS.md`
+  says so. The decisions were moved out of `AppModel` without a change of
+  behavior intended; `swift test` cannot show that the app wires them up the same
+  way, only a run of the built app can.
+- **P08** — the badge block is now license, platform, CI, latest release,
+  conformance, in the standard's order. License and release come from GitHub
+  through shields.io, CI is GitHub's own badge, conformance is the committed
+  badge regenerated by `conformance.py`, and the platform badge is checked
+  against `Package.swift` by a CI step, so it cannot drift. The Swift badge was
+  dropped; the toolchain requirement lives in the README's Requirements.
+- **S03, S04** — the Stream Deck plugin now has a CI job (`Stream Deck plugin`)
+  that runs `npm test`: a syntax check, a format check (no tabs, no trailing
+  whitespace, final newline, line length) and an unused-import check, written
+  without dependencies because the plugin has none, plus its functional tests.
+  Its claim of Node 20 or newer is covered by the runner's Node.
+- **B13** — the build and validation commands, the self-test, the icon
+  generation and the platform requirements each have one home (`AGENTS.md`,
+  README) and `CONTRIBUTING.md` links to them. `CONTRIBUTING.md` had also
+  claimed there were no third-party dependencies, which stopped being true with
+  AppUpdater and Swifter.
+- **I03, R01** — `Config/Info.plist` now embeds `OPRLicenseIdentifier` and
+  `OPRProductDescription`; `RELEASE_CHECKLIST.md` states which property lives
+  where and what mirrors it.
+- **W03** — the site still described v1.2.0 after v1.3.0 was published. Fixed in
+  the same change as this assessment (download links, version badge, "describes
+  version" line).
+- **G02** — `AGENTS.md`'s layout and command list did not mention
+  `Tools/openpromptr-streamdeck` or its `npm test`. Fixed in the same change.
+- **W05, W06** — retired in standard 1.12.0 and recorded `na`. **W09** (a site
+  designed for the project) passes: `docs/index.html` is a bespoke page, see
+  [decision 0013](https://github.com/trsdn/.github/blob/main/docs/decisions/0013-sites-are-designed-not-templated.md).
+
+## Not applicable
+
+- **B14** — this repository references no credentials of its own; CI runs
+  with no secrets.
+- **D01–D06** — not deployed; see profiles above.
+- **G08** — no repository-scoped agent platform integration (e.g. a GitHub
+  App config) exists to be intentional about.
+- **L04–L06** — single-locale app; no localization catalogs exist.
+- **T01–T05** — not a documentation repository; see profiles above.
+- **X04** — no meaningful CLI/terminal output surface beyond `--version` and
+  `--self-test`, neither of which uses color or Unicode decoration.
+- **Y06** — no data outlives a session; `UserDefaults` settings persist by
+  design, but there's no retention/deletion policy question beyond "the user
+  can clear the app's own preferences domain," which `README.md` and
+  `SECURITY.md` already state.
+
+## Worth noting on otherwise-passing criteria
+
+- **X01** (keyboard operability) — verified by code review, not live
+  end-to-end testing: every interactive control in `ControlView.swift` and `SettingsView.swift` is a
+  native SwiftUI `Button`/`Toggle`/`Picker`, which macOS gives standard Tab
+  focus order and a focus ring for free, and there's no custom-drawn
+  hit-testing that would bypass it. Not tested with an actual screen reader
+  or a physical keyboard walkthrough.
+- **W01** — "repeatable, documented process" here is simply: GitHub Pages
+  serves `docs/` from `main` directly, no build step and no vendored assets.
+  GitHub's own automatic `pages build and deployment` run for the latest
+  commit (`1cca2e1`, 2026-09-21T21:10) failed with a transient `403` uploading
+  the Pages artifact; the run before it succeeded and the site is live and
+  serving the previous commit's content. This is a platform-side hiccup in a
+  workflow the repository does not own or configure, not a defect in the
+  publishing process itself, and it needs no fix here beyond a retry (a push,
+  or `gh workflow run`) whenever the next commit lands.

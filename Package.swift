@@ -13,6 +13,13 @@ let package = Package(
             targets: ["OpenPromptr"]
         )
     ],
+    dependencies: [
+        // Pinned exactly: the notarization broker builds with
+        // `--only-use-versions-from-resolved-file` against its own copy of
+        // Package.resolved.
+        .package(url: "https://github.com/mxcl/AppUpdater.git", exact: "4.1.2"),
+        .package(url: "https://github.com/httpswift/swifter.git", exact: "1.5.0"),
+    ],
     targets: [
         .target(
             name: "OpenPromptrCore"
@@ -27,12 +34,16 @@ let package = Package(
             ],
             linkerSettings: [
                 .linkedFramework("Foundation"),
-                .linkedFramework("CoreGraphics")
+                .linkedFramework("CoreGraphics"),
             ]
         ),
         .executableTarget(
             name: "OpenPromptr",
-            dependencies: ["OpenPromptrCore", "VirtualDisplayBridge"],
+            dependencies: [
+                "OpenPromptrCore", "VirtualDisplayBridge",
+                .product(name: "AppUpdater", package: "AppUpdater"),
+                .product(name: "Swifter", package: "swifter"),
+            ],
             linkerSettings: [
                 .linkedFramework("AppKit"),
                 .linkedFramework("AVFoundation"),
@@ -44,13 +55,13 @@ let package = Package(
                 .linkedFramework("QuartzCore"),
                 .linkedFramework("ServiceManagement"),
                 .linkedFramework("ScreenCaptureKit"),
-                .linkedFramework("SwiftUI")
+                .linkedFramework("SwiftUI"),
             ]
         ),
         .testTarget(
             name: "OpenPromptrCoreTests",
             dependencies: ["OpenPromptrCore"]
-        )
+        ),
     ],
     swiftLanguageModes: [.v6]
 )

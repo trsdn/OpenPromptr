@@ -1,4 +1,5 @@
 import Testing
+
 @testable import OpenPromptrCore
 
 @Test("A wide source is letterboxed above and below")

@@ -1,5 +1,6 @@
 import CoreGraphics
 import Testing
+
 @testable import OpenPromptrCore
 
 @Test("Layer geometry preserves transform order for every transform")
@@ -10,7 +11,7 @@ func layerGeometryPreservesTransformOrder() throws {
         CGPoint(x: 0, y: 0),
         CGPoint(x: 160, y: 0),
         CGPoint(x: 0, y: 90),
-        CGPoint(x: 160, y: 90)
+        CGPoint(x: 160, y: 90),
     ]
 
     for rotation in DisplayRotation.allCases {
@@ -98,36 +99,37 @@ private func unitCornerDestinations(
     mirrorHorizontally: Bool,
     mirrorVertically: Bool
 ) -> [CGPoint] {
-    let rotated: [CGPoint] = switch rotation {
-    case .degrees0:
-        [
-            CGPoint(x: 0, y: 0),
-            CGPoint(x: 1, y: 0),
-            CGPoint(x: 0, y: 1),
-            CGPoint(x: 1, y: 1)
-        ]
-    case .degrees90:
-        [
-            CGPoint(x: 0, y: 1),
-            CGPoint(x: 0, y: 0),
-            CGPoint(x: 1, y: 1),
-            CGPoint(x: 1, y: 0)
-        ]
-    case .degrees180:
-        [
-            CGPoint(x: 1, y: 1),
-            CGPoint(x: 0, y: 1),
-            CGPoint(x: 1, y: 0),
-            CGPoint(x: 0, y: 0)
-        ]
-    case .degrees270:
-        [
-            CGPoint(x: 1, y: 0),
-            CGPoint(x: 1, y: 1),
-            CGPoint(x: 0, y: 0),
-            CGPoint(x: 0, y: 1)
-        ]
-    }
+    let rotated: [CGPoint] =
+        switch rotation {
+        case .degrees0:
+            [
+                CGPoint(x: 0, y: 0),
+                CGPoint(x: 1, y: 0),
+                CGPoint(x: 0, y: 1),
+                CGPoint(x: 1, y: 1),
+            ]
+        case .degrees90:
+            [
+                CGPoint(x: 0, y: 1),
+                CGPoint(x: 0, y: 0),
+                CGPoint(x: 1, y: 1),
+                CGPoint(x: 1, y: 0),
+            ]
+        case .degrees180:
+            [
+                CGPoint(x: 1, y: 1),
+                CGPoint(x: 0, y: 1),
+                CGPoint(x: 1, y: 0),
+                CGPoint(x: 0, y: 0),
+            ]
+        case .degrees270:
+            [
+                CGPoint(x: 1, y: 0),
+                CGPoint(x: 1, y: 1),
+                CGPoint(x: 0, y: 0),
+                CGPoint(x: 0, y: 1),
+            ]
+        }
 
     return rotated.map { point in
         CGPoint(

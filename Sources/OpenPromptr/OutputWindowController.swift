@@ -65,7 +65,7 @@ final class OutputWindowController {
             .canJoinAllSpaces,
             .fullScreenAuxiliary,
             .stationary,
-            .ignoresCycle
+            .ignoresCycle,
         ]
         window.animationBehavior = .none
         window.sharingType = .none
