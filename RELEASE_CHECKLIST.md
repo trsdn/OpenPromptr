@@ -152,6 +152,7 @@ progress) rather than blocking the tag.
 | Version | Commit | Date checked | Secret scanning | Dependabot (critical/high) | Checked by |
 | --- | --- | --- | --- | --- | --- |
 | v1.3.2 | `649471a` | 2026-09-22 | 0 open alerts | 0 open alerts | AI agent (retroactive, `R09` reassessment) |
+| v1.3.4 | `7689ea7` | 2026-11-13 | 0 open alerts | 0 open alerts | AI agent |
 
 ## Testing the updater
 
