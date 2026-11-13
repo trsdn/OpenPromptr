@@ -54,10 +54,17 @@ display named "Teleprompter Source" with `1920×1080@60`.
   Finder/LaunchServices does not reliably receive capture callbacks for a
   virtual display it created itself.
 - The display host exits together with the main process; as a result, the
-  virtual display disappears no later than one second after the app ends.
+  virtual display disappears promptly after the app ends. Explicit shutdown
+  waits for the host to release the CoreGraphics display object before another
+  virtual display can be created.
+- OpenPromptr creates it only after the saved physical target is connected and
+  keeps it for the rest of that app run. Switching source types therefore does
+  not repeatedly hot-plug a monitor or rearrange the physical displays.
 - The virtual display receives a stable synthetic identity
   (manufacturer/product/serial number) and sRGB primaries so the configuration
   does not confuse it with real hardware.
+- Its descriptor advertises exactly the 1920×1080 framebuffer it uses instead
+  of reserving unused maximum display resources in WindowServer.
 
 The display host reports the actual `CGDirectDisplayID` once to the main process
 through a private pipe. The capture source is exclusively the `SCDisplay` with

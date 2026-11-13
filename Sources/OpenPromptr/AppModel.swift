@@ -124,7 +124,8 @@ final class AppModel: ObservableObject {
     /// A separate process owns the private virtual display. Keeping creation
     /// and ScreenCaptureKit capture in different processes avoids a macOS 26
     /// failure where a Finder-launched app receives no stream callbacks. The
-    /// host only runs while the virtual display is actually the source.
+    /// host remains alive after first use so source changes do not repeatedly
+    /// hot-plug a display and make macOS rearrange physical monitors.
     private var virtualDisplayHost: VirtualDisplayHostProcess?
     private var virtualDisplayID: CGDirectDisplayID?
     private var workingSource: CaptureSourceSelection
@@ -271,7 +272,7 @@ final class AppModel: ObservableObject {
     }
 
     private func finishLaunching() async {
-        if usesVirtualSource {
+        if usesVirtualSource, resolvedTarget != nil {
             await ensureVirtualSource()
         }
         updatePermissionStatus()
@@ -289,8 +290,8 @@ final class AppModel: ObservableObject {
     }
 
     /// Starts a headless copy of this signed executable that owns the virtual
-    /// display for as long as it is the selected source. The main process
-    /// remains the sole ScreenCaptureKit client.
+    /// display after a physical target is available. The main process remains
+    /// the sole ScreenCaptureKit client.
     private func ensureVirtualSource() async {
         guard virtualDisplayID == nil else {
             return
@@ -313,18 +314,6 @@ final class AppModel: ObservableObject {
         // Re-enumerate so the new virtual display is excluded from targets.
         refreshDisplaySnapshot()
         updateIdleStatus()
-    }
-
-    /// Tears the virtual display down when another source is chosen, so no
-    /// unused synthetic monitor stays in the arrangement.
-    private func releaseVirtualSource() {
-        guard virtualDisplayHost != nil || virtualDisplayID != nil else {
-            return
-        }
-        virtualDisplayHost?.stop()
-        virtualDisplayHost = nil
-        virtualDisplayID = nil
-        refreshDisplaySnapshot()
     }
 
     func selectSourceKind(_ kind: CaptureSourceKind) {
@@ -352,11 +341,12 @@ final class AppModel: ObservableObject {
             }
             switch kind {
             case .virtualDisplay:
-                await ensureVirtualSource()
+                if resolvedTarget != nil {
+                    await ensureVirtualSource()
+                }
             case .display:
-                releaseVirtualSource()
+                break
             case .window:
-                releaseVirtualSource()
                 refreshWindows()
             }
             refreshDisplaySnapshot()
@@ -899,7 +889,13 @@ final class AppModel: ObservableObject {
             return
         }
 
-        if usesVirtualSource, virtualDisplayID == nil {
+        if usesVirtualSource, virtualDisplayID == nil,
+           resolvedTarget != nil {
+            await ensureVirtualSource()
+        }
+
+        if usesVirtualSource, virtualDisplayID == nil,
+           resolvedTarget != nil {
             let message =
                 "The virtual source display could not be created (private API unavailable)."
             if lifecycle == .running || captureSession != nil {

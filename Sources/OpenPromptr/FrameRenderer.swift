@@ -49,12 +49,11 @@ private enum DirectPresentationEvent: Sendable {
     case failed(reason: String)
 }
 
-/// Enqueues only on the display stream's serial frame queue. Incoming frames
-/// are dropped whenever AVFoundation applies backpressure; no secondary queue
-/// is allowed to accumulate.
-private final class DirectSampleBufferPresenter: @unchecked Sendable {
+/// Enqueues on AVFoundation's required main actor. Incoming frames are dropped
+/// whenever AVFoundation applies backpressure.
+@MainActor
+private final class DirectSampleBufferPresenter {
     private let layer: AVSampleBufferDisplayLayer
-    private let lock = NSLock()
     private var isActive = true
     private var eventHandler: (@Sendable (DirectPresentationEvent) -> Void)?
     private var lastReportedSize: PixelSize?
@@ -68,9 +67,7 @@ private final class DirectSampleBufferPresenter: @unchecked Sendable {
     func setEventHandler(
         _ handler: @escaping @Sendable (DirectPresentationEvent) -> Void
     ) {
-        lock.lock()
         eventHandler = handler
-        lock.unlock()
     }
 
     func present(
@@ -78,11 +75,7 @@ private final class DirectSampleBufferPresenter: @unchecked Sendable {
         pixelBuffer: CVPixelBuffer
     ) {
         var event: DirectPresentationEvent?
-        var handler: (@Sendable (DirectPresentationEvent) -> Void)?
-
-        lock.lock()
         guard isActive else {
-            lock.unlock()
             return
         }
 
@@ -131,19 +124,116 @@ private final class DirectSampleBufferPresenter: @unchecked Sendable {
             }
         }
 
-        handler = eventHandler
+        if let event {
+            eventHandler?(event)
+        }
+    }
+
+    func deactivate() {
+        isActive = false
+        eventHandler = nil
+    }
+}
+
+private final class PendingDirectFrame: @unchecked Sendable {
+    let sampleBuffer: CMSampleBuffer
+    let pixelBuffer: CVPixelBuffer
+
+    init(
+        sampleBuffer: CMSampleBuffer,
+        pixelBuffer: CVPixelBuffer
+    ) {
+        self.sampleBuffer = sampleBuffer
+        self.pixelBuffer = pixelBuffer
+    }
+}
+
+/// Coalesces capture-queue frames before crossing to AVFoundation's main-actor
+/// display layer. At most one delivery task and one replacement frame exist.
+private final class DirectFrameDelivery: @unchecked Sendable {
+    private let lock = NSLock()
+    private let presenter: DirectSampleBufferPresenter
+    private var pendingFrame: PendingDirectFrame?
+    private var deliveryScheduled = false
+    private var isActive = true
+
+    @MainActor
+    init(presenter: DirectSampleBufferPresenter) {
+        self.presenter = presenter
+    }
+
+    func submit(
+        sampleBuffer: CMSampleBuffer,
+        pixelBuffer: CVPixelBuffer
+    ) {
+        let frame = PendingDirectFrame(
+            sampleBuffer: sampleBuffer,
+            pixelBuffer: pixelBuffer
+        )
+
+        lock.lock()
+        guard isActive else {
+            lock.unlock()
+            return
+        }
+        pendingFrame = frame
+        guard !deliveryScheduled else {
+            lock.unlock()
+            return
+        }
+        deliveryScheduled = true
         lock.unlock()
 
-        if let event {
-            handler?(event)
-        }
+        scheduleDelivery()
     }
 
     func deactivate() {
         lock.lock()
         isActive = false
-        eventHandler = nil
+        pendingFrame = nil
         lock.unlock()
+
+        Task { @MainActor [presenter] in
+            presenter.deactivate()
+        }
+    }
+
+    private func scheduleDelivery() {
+        Task { @MainActor [weak self] in
+            self?.deliverNextFrame()
+        }
+    }
+
+    @MainActor
+    private func deliverNextFrame() {
+        lock.lock()
+        guard isActive, let frame = pendingFrame else {
+            pendingFrame = nil
+            deliveryScheduled = false
+            lock.unlock()
+            return
+        }
+        pendingFrame = nil
+        lock.unlock()
+
+        presenter.present(
+            sampleBuffer: frame.sampleBuffer,
+            pixelBuffer: frame.pixelBuffer
+        )
+
+        lock.lock()
+        let shouldContinue = isActive && pendingFrame != nil
+        if !shouldContinue {
+            deliveryScheduled = false
+        }
+        lock.unlock()
+
+        if shouldContinue {
+            Task { @MainActor [weak self] in
+                await Task.yield()
+                self?.deliverNextFrame()
+            }
+        }
     }
 }
 
@@ -154,10 +244,10 @@ final class FrameReceiver: @unchecked Sendable {
 
     private let lock = NSLock()
     private var isActive = true
-    private var directPresenter: DirectSampleBufferPresenter?
+    private var directDelivery: DirectFrameDelivery?
 
-    fileprivate init(directPresenter: DirectSampleBufferPresenter) {
-        self.directPresenter = directPresenter
+    fileprivate init(directDelivery: DirectFrameDelivery) {
+        self.directDelivery = directDelivery
     }
 
     func receive(
@@ -170,7 +260,7 @@ final class FrameReceiver: @unchecked Sendable {
             return
         }
         frameStore.replace(with: sampleBuffer)
-        directPresenter?.present(
+        directDelivery?.submit(
             sampleBuffer: sampleBuffer,
             pixelBuffer: pixelBuffer
         )
@@ -179,19 +269,19 @@ final class FrameReceiver: @unchecked Sendable {
 
     fileprivate func useFallback() {
         lock.lock()
-        let presenter = directPresenter
-        directPresenter = nil
+        let delivery = directDelivery
+        directDelivery = nil
         lock.unlock()
-        presenter?.deactivate()
+        delivery?.deactivate()
     }
 
     fileprivate func stop() {
         lock.lock()
         isActive = false
-        let presenter = directPresenter
-        directPresenter = nil
+        let delivery = directDelivery
+        directDelivery = nil
         lock.unlock()
-        presenter?.deactivate()
+        delivery?.deactivate()
         frameStore.clear()
     }
 }
@@ -221,7 +311,6 @@ final class FrameRenderer {
     private let colorSpace = CGColorSpaceCreateDeviceRGB()
     private let sampleBufferLayer: AVSampleBufferDisplayLayer
     private let fallbackLayer: CALayer
-    private let directPresenter: DirectSampleBufferPresenter
     private var displayTransform: DisplayTransform
     private var onFirstFrame: ((RenderingPath) -> Void)?
     private var onFailure: ((String) -> Void)?
@@ -270,8 +359,9 @@ final class FrameRenderer {
         self.onFailure = onFailure
         self.sampleBufferLayer = sampleBufferLayer
         self.fallbackLayer = fallbackLayer
-        self.directPresenter = directPresenter
-        frameReceiver = FrameReceiver(directPresenter: directPresenter)
+        frameReceiver = FrameReceiver(
+            directDelivery: DirectFrameDelivery(presenter: directPresenter)
+        )
 
         rootLayer.backgroundColor = NSColor.black.cgColor
         rootLayer.masksToBounds = true

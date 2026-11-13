@@ -47,8 +47,6 @@
 static const unsigned int kOPRVendorID  = 0x4F50; // "OP"
 static const unsigned int kOPRProductID = 0x0001;
 static const unsigned int kOPRSerialNum = 0x0001;
-static const unsigned int kOPRMaxPixelsWide = 4096;
-static const unsigned int kOPRMaxPixelsHigh = 2304;
 
 @implementation OPRVirtualDisplay {
     // Held for the object's lifetime so the synthetic display stays online.
@@ -95,8 +93,11 @@ static const unsigned int kOPRMaxPixelsHigh = 2304;
     );
     // A plausible 16:9 panel; only affects reported DPI, not capture.
     descriptor.sizeInMillimeters = CGSizeMake(476.0, 268.0);
-    descriptor.maxPixelsWide = MAX(width, kOPRMaxPixelsWide);
-    descriptor.maxPixelsHigh = MAX(height, kOPRMaxPixelsHigh);
+    // These are framebuffer limits, not a list of resolutions the display
+    // might support. Advertising a larger surface makes WindowServer reserve
+    // display resources that this single-mode display never uses.
+    descriptor.maxPixelsWide = width;
+    descriptor.maxPixelsHigh = height;
     // sRGB primaries and a D65 white point.
     descriptor.redPrimary = CGPointMake(0.640, 0.330);
     descriptor.greenPrimary = CGPointMake(0.300, 0.600);
@@ -133,6 +134,18 @@ static const unsigned int kOPRMaxPixelsHigh = 2304;
     if (![display applySettings:settings]) {
         NSLog(@"[OPRVirtualDisplay] applySettings: failed.");
         return nil;
+    }
+
+    CGDisplayModeRef activeMode = CGDisplayCopyDisplayMode(display.displayID);
+    if (activeMode) {
+        NSLog(
+            @"[OPRVirtualDisplay] Active mode: %zux%zu points, %zux%zu pixels",
+            CGDisplayModeGetWidth(activeMode),
+            CGDisplayModeGetHeight(activeMode),
+            CGDisplayModeGetPixelWidth(activeMode),
+            CGDisplayModeGetPixelHeight(activeMode)
+        );
+        CGDisplayModeRelease(activeMode);
     }
 
     _virtualDisplay = display;

@@ -1,4 +1,5 @@
 import CoreGraphics
+import Darwin
 import Foundation
 import VirtualDisplayBridge
 
@@ -38,7 +39,7 @@ enum VirtualDisplayHostError: LocalizedError {
 }
 
 enum VirtualDisplayHostMain {
-    static func run() -> Never {
+    static func run() {
         guard let display = VirtualDisplay(
             name: VirtualSource.name,
             width: UInt32(VirtualSource.width),
@@ -50,16 +51,31 @@ enum VirtualDisplayHostMain {
             exit(EXIT_FAILURE)
         }
 
+        signal(SIGTERM, SIG_IGN)
+        let stopSignal = DispatchSemaphore(value: 0)
+        let terminationSource = DispatchSource.makeSignalSource(
+            signal: SIGTERM,
+            queue: .main
+        )
+        terminationSource.setEventHandler {
+            stopSignal.signal()
+        }
+        terminationSource.resume()
+
         print(
             "\(VirtualDisplayHostProtocol.readyPrefix)\(display.displayID)"
         )
         fflush(stdout)
 
         let originalParent = getppid()
-        while originalParent > 1, getppid() == originalParent {
-            RunLoop.current.run(until: Date(timeIntervalSinceNow: 1))
+        while stopSignal.wait(timeout: .now()) == .timedOut,
+            originalParent > 1,
+            getppid() == originalParent
+        {
+            RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
         }
-        exit(EXIT_SUCCESS)
+        terminationSource.cancel()
+        withExtendedLifetime(display) {}
     }
 }
 
@@ -123,6 +139,7 @@ final class VirtualDisplayHostProcess {
             return
         }
         process.terminate()
+        process.waitUntilExit()
     }
 
     deinit {
